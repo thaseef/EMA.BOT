@@ -9,456 +9,123 @@ from datetime import datetime, time as dt_time
 import pytz
 
 # -----------------------------
-# Page Configuration
+# Page Configuration & Styling
 # -----------------------------
 st.set_page_config(
     page_title="INSTITUTIONAL ALGO V3",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# -----------------------------
-# CYBER/NEON THEME CSS
-# -----------------------------
+# Custom CSS to match the Dark Neon UI
 st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+    <style>
+    /* Main Background */
+    .stApp {
+        background-color: #050714 !important;
+        background-image: radial-gradient(circle at top right, #101630 0%, #050714 60%);
+        color: #E0E6ED;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Hide top header */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
 
-/* ===== ROOT & BACKGROUND ===== */
-:root {
-    --neon-cyan: #00f5ff;
-    --neon-green: #00ff88;
-    --neon-pink: #ff006e;
-    --neon-orange: #ff8c00;
-    --neon-yellow: #ffe600;
-    --dark-bg: #020408;
-    --dark-card: #060d14;
-    --dark-border: #0a1628;
-    --grid-line: rgba(0, 245, 255, 0.05);
-    --text-primary: #e0f7ff;
-    --text-dim: #4a7a8a;
-}
+    /* Top Navigation Mockup */
+    .top-nav {
+        display: flex;
+        align-items: center;
+        background: rgba(16, 22, 48, 0.6);
+        border: 1px solid rgba(41, 56, 102, 0.5);
+        border-radius: 12px;
+        padding: 15px 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        backdrop-filter: blur(8px);
+    }
+    .top-nav-logo {
+        font-size: 20px;
+        font-weight: 800;
+        color: #5D88FF;
+        margin-right: 40px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .top-nav-item {
+        color: #8C9BB5;
+        margin-right: 30px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .top-nav-item.active {
+        color: #FFFFFF;
+        background: rgba(93, 136, 255, 0.15);
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(93, 136, 255, 0.3);
+    }
 
-.stApp {
-    background-color: var(--dark-bg) !important;
-    background-image:
-        linear-gradient(var(--grid-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
-        radial-gradient(ellipse at 20% 50%, rgba(0,245,255,0.03) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(0,255,136,0.03) 0%, transparent 50%);
-    background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
-    font-family: 'Rajdhani', sans-serif;
-}
-
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--dark-bg); }
-::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 2px; }
-
-/* ===== HEADER ===== */
-.cyber-header {
-    text-align: center;
-    padding: 20px 0 10px 0;
-    position: relative;
-}
-.cyber-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 2.8rem;
-    font-weight: 900;
-    letter-spacing: 0.15em;
-    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green), var(--neon-cyan));
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: shimmer 3s linear infinite;
-    text-shadow: none;
-    margin: 0;
-}
-.cyber-subtitle {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    letter-spacing: 0.3em;
-    margin-top: 4px;
-    text-transform: uppercase;
-}
-.cyber-timestamp {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--neon-cyan);
-    letter-spacing: 0.2em;
-}
-@keyframes shimmer {
-    0% { background-position: 0% center; }
-    100% { background-position: 200% center; }
-}
-
-/* ===== DIVIDER ===== */
-.neon-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-green), var(--neon-cyan), transparent);
-    margin: 10px 0 20px 0;
-    position: relative;
-}
-.neon-divider::after {
-    content: '◆';
-    position: absolute;
-    left: 50%;
-    top: -8px;
-    transform: translateX(-50%);
-    color: var(--neon-cyan);
-    font-size: 0.7rem;
-}
-
-/* ===== BTC TREND CARDS ===== */
-.btc-panel {
-    background: var(--dark-card);
-    border: 1px solid rgba(0,245,255,0.15);
-    border-top: 2px solid var(--neon-cyan);
-    border-radius: 4px;
-    padding: 14px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-.btc-panel::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, rgba(0,245,255,0.03) 0%, transparent 60%);
-    pointer-events: none;
-}
-.btc-panel:hover {
-    border-color: rgba(0,245,255,0.4);
-    box-shadow: 0 0 20px rgba(0,245,255,0.1);
-}
-.btc-tf-label {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    letter-spacing: 0.2em;
-    margin-bottom: 6px;
-}
-.btc-price-main {
-    font-family: 'Orbitron', monospace;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--neon-yellow);
-    text-shadow: 0 0 10px rgba(255,230,0,0.4);
-}
-.btc-trend-up {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--neon-green);
-    text-shadow: 0 0 8px rgba(0,255,136,0.5);
-}
-.btc-trend-down {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--neon-pink);
-    text-shadow: 0 0 8px rgba(255,0,110,0.5);
-}
-.btc-trend-neutral {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--text-dim);
-}
-
-/* ===== SECTION HEADERS ===== */
-.section-header {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.25em;
-    color: var(--neon-cyan);
-    text-transform: uppercase;
-    padding: 8px 0 8px 12px;
-    border-left: 3px solid var(--neon-cyan);
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.section-badge {
-    background: rgba(0,245,255,0.1);
-    border: 1px solid rgba(0,245,255,0.3);
-    border-radius: 2px;
-    padding: 2px 8px;
-    font-size: 0.65rem;
-    color: var(--neon-cyan);
-}
-
-/* ===== ALERT CARDS (LEFT PANEL) ===== */
-.alert-card {
-    background: var(--dark-card);
-    border: 1px solid rgba(0,245,255,0.1);
-    border-radius: 6px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    animation: fadeSlideIn 0.5s ease forwards;
-}
-.alert-card-long {
-    border-left: 3px solid var(--neon-green);
-    background: linear-gradient(90deg, rgba(0,255,136,0.04) 0%, var(--dark-card) 40%);
-}
-.alert-card-short {
-    border-left: 3px solid var(--neon-pink);
-    background: linear-gradient(90deg, rgba(255,0,110,0.04) 0%, var(--dark-card) 40%);
-}
-.alert-card-neutral {
-    border-left: 3px solid var(--text-dim);
-}
-.alert-card:hover {
-    transform: translateX(3px);
-    box-shadow: 0 4px 20px rgba(0,245,255,0.08);
-}
-@keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateX(-10px); }
-    to { opacity: 1; transform: translateX(0); }
-}
-.alert-symbol {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: 0.05em;
-}
-.alert-signal-long { color: var(--neon-green); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; }
-.alert-signal-short { color: var(--neon-pink); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; }
-.alert-signal-neutral { color: var(--text-dim); font-size: 0.75rem; letter-spacing: 0.1em; }
-.alert-price {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--neon-yellow);
-}
-
-/* ===== CONFIDENCE BARS ===== */
-.conf-bar-wrap {
-    background: rgba(0,0,0,0.4);
-    border-radius: 2px;
-    height: 4px;
-    width: 100%;
-    margin-top: 8px;
-    overflow: hidden;
-}
-.conf-bar-fill-high {
-    height: 100%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
-    box-shadow: 0 0 6px var(--neon-green);
-    transition: width 0.8s ease;
-}
-.conf-bar-fill-mid {
-    height: 100%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--neon-orange), var(--neon-yellow));
-    box-shadow: 0 0 6px var(--neon-orange);
-    transition: width 0.8s ease;
-}
-.conf-bar-fill-low {
-    height: 100%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--neon-pink), var(--neon-orange));
-    box-shadow: 0 0 6px var(--neon-pink);
-    transition: width 0.8s ease;
-}
-
-/* ===== METRICS ROW ===== */
-.metric-pill {
-    display: inline-block;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.65rem;
-    padding: 2px 7px;
-    border-radius: 2px;
-    margin-right: 5px;
-    margin-top: 5px;
-    letter-spacing: 0.05em;
-}
-.pill-rr {
-    background: rgba(0,245,255,0.08);
-    border: 1px solid rgba(0,245,255,0.25);
-    color: var(--neon-cyan);
-}
-.pill-conf-high {
-    background: rgba(0,255,136,0.08);
-    border: 1px solid rgba(0,255,136,0.3);
-    color: var(--neon-green);
-}
-.pill-conf-mid {
-    background: rgba(255,140,0,0.08);
-    border: 1px solid rgba(255,140,0,0.3);
-    color: var(--neon-orange);
-}
-
-/* ===== RIGHT PANEL TABLE ===== */
-.scan-table-wrap {
-    background: var(--dark-card);
-    border: 1px solid rgba(0,245,255,0.08);
-    border-radius: 6px;
-    overflow: hidden;
-}
-.scan-row {
-    display: grid;
-    grid-template-columns: 2fr 2.5fr 1fr 1fr 1fr;
-    padding: 8px 14px;
-    border-bottom: 1px solid rgba(0,245,255,0.04);
-    align-items: center;
-    transition: background 0.2s;
-    font-family: 'Rajdhani', sans-serif;
-}
-.scan-row:hover { background: rgba(0,245,255,0.03); }
-.scan-header {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.6rem;
-    color: var(--text-dim);
-    letter-spacing: 0.15em;
-    padding: 10px 14px;
-    background: rgba(0,245,255,0.03);
-    border-bottom: 1px solid rgba(0,245,255,0.1);
-    display: grid;
-    grid-template-columns: 2fr 2.5fr 1fr 1fr 1fr;
-    text-transform: uppercase;
-}
-.scan-symbol { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--text-primary); }
-.scan-sig-long { font-size: 0.75rem; font-weight: 700; color: var(--neon-green); }
-.scan-sig-short { font-size: 0.75rem; font-weight: 700; color: var(--neon-pink); }
-.scan-sig-neutral { font-size: 0.75rem; color: var(--text-dim); }
-.scan-conf-high { font-size: 0.75rem; font-weight: 700; color: var(--neon-green); font-family: 'Share Tech Mono', monospace; }
-.scan-conf-mid { font-size: 0.75rem; font-weight: 700; color: var(--neon-orange); font-family: 'Share Tech Mono', monospace; }
-.scan-conf-na { font-size: 0.75rem; color: var(--text-dim); font-family: 'Share Tech Mono', monospace; }
-.scan-rr { font-size: 0.75rem; color: var(--neon-cyan); font-family: 'Share Tech Mono', monospace; }
-.scan-price { font-size: 0.75rem; color: var(--neon-yellow); font-family: 'Share Tech Mono', monospace; }
-
-/* ===== SIDEBAR ===== */
-section[data-testid="stSidebar"] {
-    background: var(--dark-card) !important;
-    border-right: 1px solid rgba(0,245,255,0.1) !important;
-}
-section[data-testid="stSidebar"] * { color: var(--text-primary) !important; }
-.sidebar-logo {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
-    color: var(--neon-cyan) !important;
-    text-align: center;
-    padding: 10px 0 4px 0;
-}
-.sidebar-status {
-    background: rgba(0,255,136,0.07);
-    border: 1px solid rgba(0,255,136,0.2);
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.68rem;
-    color: var(--neon-green) !important;
-    letter-spacing: 0.05em;
-    margin: 8px 0;
-    text-align: center;
-}
-.sidebar-filter-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    color: var(--text-dim) !important;
-    text-transform: uppercase;
-    margin: 14px 0 8px 0;
-}
-.sidebar-filter-item {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 0.8rem;
-    color: var(--text-primary) !important;
-    padding: 5px 0 5px 10px;
-    border-left: 2px solid rgba(0,245,255,0.2);
-    margin-bottom: 5px;
-    letter-spacing: 0.03em;
-}
-.sidebar-filter-item span { color: var(--neon-cyan) !important; margin-right: 6px; }
-
-/* ===== STAT COUNTERS ===== */
-.stat-bar {
-    display: flex;
-    gap: 1px;
-    margin-bottom: 20px;
-}
-.stat-box {
-    flex: 1;
-    background: var(--dark-card);
-    border: 1px solid rgba(0,245,255,0.08);
-    padding: 10px 8px;
-    text-align: center;
-    position: relative;
-}
-.stat-box:first-child { border-radius: 4px 0 0 4px; border-left: 2px solid var(--neon-cyan); }
-.stat-box:last-child { border-radius: 0 4px 4px 0; }
-.stat-val {
-    font-family: 'Orbitron', monospace;
-    font-size: 1.2rem;
-    font-weight: 700;
-    display: block;
-}
-.stat-lbl {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.55rem;
-    letter-spacing: 0.15em;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    display: block;
-    margin-top: 2px;
-}
-
-/* ===== SCANNING ANIMATION ===== */
-.scanning-pulse {
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--neon-cyan);
-    box-shadow: 0 0 8px var(--neon-cyan);
-    animation: pulse 1.2s infinite;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.3; transform: scale(0.7); }
-}
-
-/* ===== SCAN PLACEHOLDER ===== */
-.scan-placeholder {
-    padding: 60px 20px;
-    text-align: center;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    letter-spacing: 0.15em;
-    border: 1px dashed rgba(0,245,255,0.1);
-    border-radius: 6px;
-}
-
-/* ===== HIDE STREAMLIT DEFAULT ELEMENTS ===== */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-.stDeployButton {display: none;}
-div[data-testid="stToolbar"] {visibility: hidden;}
-.stDataFrame {display: none;}
-
-/* ===== REMOVE STREAMLIT PADDING ===== */
-.block-container {
-    padding-top: 1.5rem !important;
-    padding-bottom: 1rem !important;
-    max-width: 100% !important;
-}
-</style>
-""", unsafe_allow_html=True)
+    /* Dashboard Cards */
+    .dash-card {
+        background: rgba(13, 18, 38, 0.7);
+        border: 1px solid rgba(34, 46, 84, 0.8);
+        border-radius: 16px;
+        padding: 20px;
+        height: 100%;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+    }
+    .card-title {
+        color: #FFFFFF;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .card-subtitle {
+        color: #8C9BB5;
+        font-size: 12px;
+    }
+    
+    /* Metrics inner cards */
+    .metric-box {
+        background: rgba(5, 7, 20, 0.5);
+        border: 1px solid rgba(41, 56, 102, 0.4);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .metric-value-up { color: #00E676; font-weight: 700; font-size: 16px; }
+    .metric-value-down { color: #FF4B4B; font-weight: 700; font-size: 16px; }
+    .metric-value-neutral { color: #B0BEC5; font-weight: 700; font-size: 16px; }
+    
+    /* Dataframe Styling */
+    [data-testid="stDataFrame"] {
+        background: rgba(13, 18, 38, 0.7);
+        border: 1px solid rgba(34, 46, 84, 0.8);
+        border-radius: 16px;
+        padding: 10px;
+    }
+    
+    /* Specific text colors */
+    .text-glow-blue { color: #5D88FF; text-shadow: 0 0 10px rgba(93, 136, 255, 0.4); }
+    
+    /* Filter list styling */
+    .filter-item {
+        color: #8C9BB5;
+        font-size: 13px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(41, 56, 102, 0.3);
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 st_autorefresh(interval=30000, key="datarefresh")
 
@@ -473,7 +140,7 @@ LONG_EMA = 200
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 # -----------------------------
-# Background Engine (UNCHANGED)
+# Background Engine with RSI Sweet Spot Logic
 # -----------------------------
 class BackgroundScanner:
     def __init__(self):
@@ -505,13 +172,16 @@ class BackgroundScanner:
             df['H-Cp'] = abs(df['high'] - df['close'].shift(1))
             df['L-Cp'] = abs(df['low'] - df['close'].shift(1))
             df['TR'] = df[['H-L', 'H-Cp', 'L-Cp']].max(axis=1)
-            df['+DM'] = np.where((df['high'] - df['high'].shift(1)) > (df['low'].shift(1) - df['low']),
+
+            df['+DM'] = np.where((df['high'] - df['high'].shift(1)) > (df['low'].shift(1) - df['low']), 
                                  np.where((df['high'] - df['high'].shift(1)) > 0, df['high'] - df['high'].shift(1), 0), 0)
-            df['-DM'] = np.where((df['low'].shift(1) - df['low']) > (df['high'] - df['high'].shift(1)),
+            df['-DM'] = np.where((df['low'].shift(1) - df['low']) > (df['high'] - df['high'].shift(1)), 
                                  np.where((df['low'].shift(1) - df['low']) > 0, df['low'].shift(1) - df['low'], 0), 0)
+
             df['TR_smooth'] = df['TR'].rolling(window=period).sum()
             df['+DM_smooth'] = df['+DM'].rolling(window=period).sum()
             df['-DM_smooth'] = df['-DM'].rolling(window=period).sum()
+
             df['+DI'] = 100 * (df['+DM_smooth'] / df['TR_smooth'])
             df['-DI'] = 100 * (df['-DM_smooth'] / df['TR_smooth'])
             df['DX'] = 100 * abs(df['+DI'] - df['-DI']) / (df['+DI'] + df['-DI'])
@@ -521,7 +191,7 @@ class BackgroundScanner:
 
     def check_bos(self, df, signal_type):
         try:
-            lookback = df.iloc[-22:-2]
+            lookback = df.iloc[-22:-2] 
             if signal_type == "LONG":
                 recent_high = lookback['high'].max()
                 return df['close'].iloc[-1] > recent_high
@@ -549,7 +219,7 @@ class BackgroundScanner:
                 sl = lookback['low'].min() * 0.998
                 risk = entry_price - sl
                 if risk <= 0: return 0, sl, 0
-                tp = entry_price + (risk * 2)
+                tp = entry_price + (risk * 2) 
                 rr = (tp - entry_price) / risk
                 return round(rr, 2), round(sl, 4), round(tp, 4)
             else:
@@ -566,10 +236,11 @@ class BackgroundScanner:
         london_start, london_end = dt_time(8, 0), dt_time(16, 0)
         ny_start, ny_end = dt_time(13, 0), dt_time(21, 0)
         asian_start, asian_end = dt_time(0, 0), dt_time(6, 0)
+
         if (london_start <= utc_now <= london_end) or (ny_start <= utc_now <= ny_end):
-            return "🔥 HIGH (London/NY Open)", 15
+            return "🔥 HIGH (London/NY Open)", 15 
         elif asian_start <= utc_now <= asian_end:
-            return "🧊 LOW (Asian Dead Zone)", -10
+            return "🧊 LOW (Asian Dead Zone)", -10 
         else:
             return "⚪ NORMAL (Mid Session)", 0
 
@@ -580,15 +251,16 @@ class BackgroundScanner:
             close_prices = pd.Series([float(x[4]) for x in resp])
             ema_21 = close_prices.ewm(span=SHORT_EMA, adjust=False).mean().iloc[-2]
             ema_200 = close_prices.ewm(span=LONG_EMA, adjust=False).mean().iloc[-2]
-            if ema_21 > ema_200: return "UPTREND"
-            elif ema_21 < ema_200: return "DOWNTREND"
-            else: return "SIDEWAY"
-        except: return "ERROR"
+            if ema_21 > ema_200: return "🟢 UPTREND"
+            elif ema_21 < ema_200: return "🔴 DOWNTREND"
+            else: return "⚪ SIDEWAY"
+        except: return "⚪ ERROR"
 
     def send_telegram(self, coin, signal, trend, conf, adx, bos, rr, sl, tp, session, price, rsis, vol):
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID: return
         conf_icon = "🔥" if conf >= 80 else "⚠️" if conf >= 60 else "🛑"
         bos_text = "✅ CONFIRMED" if bos else "❌ NO BREAK"
+        
         message = (
             f"⚡ *INSTITUTIONAL ALERT: {coin}* ⚡\n\n"
             f"**Action:** {signal}\n"
@@ -615,6 +287,7 @@ class BackgroundScanner:
         while self.is_running:
             coins = self.get_top_usdt_pairs()
             new_results = []
+
             try:
                 price_resp = requests.get("https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT", timeout=5).json()
                 self.btc_mtfa["Price"] = f"${round(float(price_resp['price']), 2):,}"
@@ -639,61 +312,82 @@ class BackgroundScanner:
                     price = df["close"].iloc[-1]
                     closed_candle_time = df["close_time"].iloc[-2]
 
-                    sig, specific_trend, is_cross = "NEUTRAL", "SIDEWAY", False
+                    sig, specific_trend, is_cross = "⚪ Neutral", "⚪ SIDEWAY", False
                     adx_val, bos_status, conf, rr = 0, False, 0, 0
                     vol_status = "-"
-                    sl, tp = 0, 0
 
-                    if curr_e_short > curr_e_long: specific_trend = "UPTREND"
-                    elif curr_e_short < curr_e_long: specific_trend = "DOWNTREND"
+                    if curr_e_short > curr_e_long: specific_trend = "🟢 UPTREND"
+                    elif curr_e_short < curr_e_long: specific_trend = "🔴 DOWNTREND"
 
                     if prev_e_short <= prev_e_long and curr_e_short > curr_e_long:
-                        sig, is_cross = "LONG CROSS", True
+                        sig, is_cross = "🚀 1H LONG CROSS", True
                     elif prev_e_short >= prev_e_long and curr_e_short < curr_e_long:
-                        sig, is_cross = "SHORT CROSS", True
-                    else:
-                        sig = specific_trend
+                        sig, is_cross = "🔻 1H SHORT CROSS", True
+                    else: sig = specific_trend
 
                     if is_cross:
                         adx_val = self.calculate_adx(df)
                         signal_type = "LONG" if "LONG" in sig else "SHORT"
                         bos_status = self.check_bos(df, signal_type)
+                        
+                        # 1. Fetch 1H RSI early to use in our confidence scoring
+                        current_1h_rsi = self.fetch_rsi(symbol, "1h")
+                        
                         closed_vol = df["vol"].iloc[-2]
                         avg_vol_20 = df["vol"].iloc[-22:-2].mean()
-                        vol_status = "2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "Normal"
+                        vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
+                        
                         rr, sl, tp = self.calculate_rr(df, signal_type, price)
                         session_name, session_weight = self.get_session_weight()
-                        raw_conf = 45
+                        
+                        # -------------------------------------------------
+                        # Master Scoring Algorithm (With RSI Sweet Spots)
+                        # -------------------------------------------------
+                        raw_conf = 35 # Base confidence
+                        
+                        # ADX & BOS Filters
                         if adx_val > 25: raw_conf += 15
-                        if adx_val < 20: raw_conf -= 40
-                        if bos_status: raw_conf += 20
-                        if "MASSIVE" in vol_status: raw_conf += 15
+                        if adx_val < 20: raw_conf -= 30
+                        if bos_status: raw_conf += 15
+                        
+                        # Volume & Session Filters
+                        if "MASSIVE" in vol_status: raw_conf += 10
                         elif "Low Volume" in vol_status: raw_conf -= 20
-                        raw_conf += session_weight
+                        raw_conf += session_weight 
+
+                        # RSI SWEET SPOT LOGIC
+                        if signal_type == "LONG":
+                            if 55 <= current_1h_rsi <= 68:
+                                raw_conf += 25  # Optimal momentum
+                            elif current_1h_rsi > 70:
+                                raw_conf -= 15  # Penalize overbought
+                        
+                        elif signal_type == "SHORT":
+                            if 31 <= current_1h_rsi <= 55:
+                                raw_conf += 25  # Optimal momentum
+                            elif current_1h_rsi < 30:
+                                raw_conf -= 15  # Penalize oversold
+
                         conf = max(0, min(100, raw_conf))
+
+                        # Threshold Logic
                         if conf >= 60 and rr >= 2.0:
                             if self.alerted_candles.get(symbol) != closed_candle_time:
                                 mtf_rsis = {
                                     "15m": self.fetch_rsi(symbol, "15m"),
-                                    "1H": self.fetch_rsi(symbol, "1h"),
+                                    "1H": current_1h_rsi, 
                                     "4H": self.fetch_rsi(symbol, "4h"),
                                     "1D": self.fetch_rsi(symbol, "1d")
                                 }
-                                self.send_telegram(symbol, sig, specific_trend, conf, adx_val, bos_status, rr, sl, tp, session_name, round(price, 6), mtf_rsis, vol_status)
+                                self.send_telegram(symbol, sig, specific_trend, conf, adx_val, bos_status, rr, sl, tp, session_name, round(price,6), mtf_rsis, vol_status)
                                 self.alerted_candles[symbol] = closed_candle_time
 
                     new_results.append({
-                        "Asset": symbol,
-                        "Signal": sig,
-                        "is_cross": is_cross,
-                        "Conf": conf if is_cross else -1,
-                        "RR": rr if is_cross and rr > 0 else 0,
-                        "Price": round(price, 6),
-                        "SL": sl,
-                        "TP": tp,
-                        "ADX": adx_val,
-                        "BOS": bos_status,
-                        "Vol": vol_status
+                        "Asset": symbol, "Signal": sig, 
+                        "Conf": f"{conf}%" if is_cross else "-",
+                        "RR Ratio": f"1:{rr}" if is_cross and rr > 0 else "-",
+                        "Session": "Active" if is_cross else "-",
+                        "Price": f"${round(price, 6)}"
                     })
                 except: pass
 
@@ -706,251 +400,128 @@ class BackgroundScanner:
 def get_scanner(): return BackgroundScanner()
 scanner_engine = get_scanner()
 
-# ─────────────────────────────────────────────────
-# SIDEBAR
-# ─────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown('<div class="sidebar-logo">◈ SMART MONEY ENGINE ◈</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-status">● ACTIVE — SCANNING 300 PAIRS</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-filter-title">Active Institutional Filters</div>', unsafe_allow_html=True)
-    filters = [
-        ("01", "1H Momentum Cross — EMA 21/200"),
-        ("02", "1:2 Minimum Risk-to-Reward"),
-        ("03", "Session Liquidity Weights"),
-        ("04", "ADX Regime Filter"),
-        ("05", "Break of Structure (BOS)"),
-    ]
-    for num, label in filters:
-        st.markdown(f'<div class="sidebar-filter-item"><span>[{num}]</span>{label}</div>', unsafe_allow_html=True)
+# -----------------------------
+# Professional UI Construction
+# -----------------------------
 
-    st.markdown('<div class="sidebar-filter-title">System Info</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="sidebar-filter-item"><span>[TF]</span> 1H Primary Chart</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="sidebar-filter-item"><span>[EX]</span> Binance USDT Pairs</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="sidebar-filter-item"><span>[SL]</span> {scanner_engine.last_update_time} SLST</div>', unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────
-# HEADER
-# ─────────────────────────────────────────────────
-st.markdown("""
-<div class="cyber-header">
-    <div class="cyber-title">⚡ INSTITUTIONAL ALGO V3</div>
-    <div class="cyber-subtitle">Smart Money Detection System · EMA Cross · BOS · ADX · Session Liquidity</div>
-</div>
-""", unsafe_allow_html=True)
-st.markdown(f'<p class="cyber-timestamp" style="text-align:center;">▸ LAST SCAN: {scanner_engine.last_update_time} SLST &nbsp;|&nbsp; AUTO-REFRESH: 30s &nbsp;|&nbsp; PAIRS: 300</p>', unsafe_allow_html=True)
-st.markdown('<div class="neon-divider"></div>', unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────
-# BTC MTFA ROW
-# ─────────────────────────────────────────────────
-def trend_class(t):
-    if "UP" in t: return "btc-trend-up"
-    if "DOWN" in t: return "btc-trend-down"
-    return "btc-trend-neutral"
-
-def trend_icon(t):
-    if "UP" in t: return "▲ UPTREND"
-    if "DOWN" in t: return "▼ DOWNTREND"
-    if "Scanning" in t: return "◌ SCANNING"
-    return "◆ SIDEWAY"
-
-cols_btc = st.columns([1.2, 1, 1, 1, 1])
-with cols_btc[0]:
-    st.markdown(f"""
-    <div class="btc-panel">
-        <div class="btc-tf-label">BTC / USDT</div>
-        <div class="btc-price-main">{scanner_engine.btc_mtfa['Price']}</div>
-    </div>""", unsafe_allow_html=True)
-
-for i, tf in enumerate(["15m", "1H", "4H", "1D"]):
-    raw = scanner_engine.btc_mtfa[tf]
-    with cols_btc[i+1]:
-        st.markdown(f"""
-        <div class="btc-panel">
-            <div class="btc-tf-label">{tf} TREND</div>
-            <div class="{trend_class(raw)}">{trend_icon(raw)}</div>
-        </div>""", unsafe_allow_html=True)
-
-st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────
-# COMPUTE STATS
-# ─────────────────────────────────────────────────
-data = scanner_engine.results_data
-total_scanned = len(data)
-active_crosses = [r for r in data if r.get("is_cross")]
-longs = [r for r in active_crosses if "LONG" in r["Signal"]]
-shorts = [r for r in active_crosses if "SHORT" in r["Signal"]]
-high_conf = [r for r in active_crosses if r["Conf"] >= 70]
-
-# ─────────────────────────────────────────────────
-# STAT BAR
-# ─────────────────────────────────────────────────
+# Simulated Top Navigation Bar
 st.markdown(f"""
-<div class="stat-bar">
-    <div class="stat-box">
-        <span class="stat-val" style="color:#00f5ff;">{total_scanned}</span>
-        <span class="stat-lbl">Pairs Scanned</span>
+    <div class="top-nav">
+        <div class="top-nav-logo">
+            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO</span>
+        </div>
+        <div style="display: flex;">
+            <div class="top-nav-item active">🖥 Dashboard</div>
+            <div class="top-nav-item">📈 Live Signals</div>
+            <div class="top-nav-item">⚙️ Settings</div>
+        </div>
+        <div style="color: #8C9BB5; font-size: 13px;">
+            🔴 Live Server: {scanner_engine.last_update_time}
+        </div>
     </div>
-    <div class="stat-box">
-        <span class="stat-val" style="color:#00ff88;">{len(longs)}</span>
-        <span class="stat-lbl">Long Crosses</span>
-    </div>
-    <div class="stat-box">
-        <span class="stat-val" style="color:#ff006e;">{len(shorts)}</span>
-        <span class="stat-lbl">Short Crosses</span>
-    </div>
-    <div class="stat-box">
-        <span class="stat-val" style="color:#ffe600;">{len(high_conf)}</span>
-        <span class="stat-lbl">High Conf ≥70%</span>
-    </div>
-    <div class="stat-box">
-        <span class="stat-val" style="color:#ff8c00;">{len(active_crosses)}</span>
-        <span class="stat-lbl">Active Signals</span>
-    </div>
-</div>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────
-# SPLIT VIEW: LEFT = ACTIVE ALERTS | RIGHT = FULL SCAN
-# ─────────────────────────────────────────────────
-left_col, right_col = st.columns([1, 2])
+st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: -10px;'>My Dashboard</h3>", unsafe_allow_html=True)
 
-# ── LEFT: ACTIVE SIGNAL CARDS ──
-with left_col:
+# Top Section: 3 Columns
+col1, col2, col3 = st.columns([1, 1, 1])
+
+def get_class(trend): 
+    return "metric-value-up" if "UP" in trend else "metric-value-down" if "DOWN" in trend else "metric-value-neutral"
+
+with col1:
+    st.markdown("""
+        <div class="dash-card">
+            <div class="card-title">Engine Overview <span style="font-size: 12px; color: #00E676;">● Active</span></div>
+            <div class="card-subtitle" style="margin-bottom: 15px;">Smart Money Concept Filters</div>
+            <div class="filter-item">✔️ 1H Momentum Cross (EMA 21/200)</div>
+            <div class="filter-item">✔️ 1:2 Minimum Risk-to-Reward</div>
+            <div class="filter-item">✔️ RSI Sweet Spot (L: 55-68 | S: 31-55)</div>
+            <div class="filter-item" style="border: none;">✔️ ADX Regime & BOS Structure</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    btc_price = scanner_engine.btc_mtfa['Price']
     st.markdown(f"""
-    <div class="section-header">
-        <span class="scanning-pulse"></span> ACTIVE SIGNAL ALERTS
-        <span class="section-badge">{len(active_crosses)} LIVE</span>
-    </div>""", unsafe_allow_html=True)
-
-    if not data:
-        st.markdown("""
-        <div class="scan-placeholder">
-            <span class="scanning-pulse"></span>
-            INITIALIZING SCAN ENGINE...<br><br>
-            Fetching top 300 USDT pairs<br>
-            Please wait ~60 seconds
-        </div>""", unsafe_allow_html=True)
-    elif not active_crosses:
-        st.markdown("""
-        <div class="scan-placeholder">
-            ◌ NO ACTIVE CROSSES DETECTED<br><br>
-            EMA 21/200 monitoring active<br>
-            Watching for institutional momentum
-        </div>""", unsafe_allow_html=True)
-    else:
-        sorted_crosses = sorted(active_crosses, key=lambda x: x["Conf"], reverse=True)
-        for row in sorted_crosses[:20]:
-            is_long = "LONG" in row["Signal"]
-            card_class = "alert-card-long" if is_long else "alert-card-short"
-            sig_class = "alert-signal-long" if is_long else "alert-signal-short"
-            sig_label = "▲ 1H LONG CROSS" if is_long else "▼ 1H SHORT CROSS"
-            conf_val = row["Conf"]
-            bar_class = "conf-bar-fill-high" if conf_val >= 70 else "conf-bar-fill-mid" if conf_val >= 60 else "conf-bar-fill-low"
-            pill_class = "pill-conf-high" if conf_val >= 70 else "pill-conf-mid"
-            bos_icon = "✦ BOS" if row["BOS"] else "✧ NO BOS"
-            adx_color = "#00ff88" if row["ADX"] > 25 else "#ff8c00" if row["ADX"] > 20 else "#ff006e"
-            rr_display = f"1:{row['RR']}" if row["RR"] > 0 else "—"
-
-            st.markdown(f"""
-            <div class="alert-card {card_class}">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                        <div class="alert-symbol">{row['Asset'].replace('USDT','')}<span style="color:#4a7a8a; font-size:0.6rem;">/USDT</span></div>
-                        <div class="{sig_class}">{sig_label}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="alert-price">${row['Price']}</div>
-                        <div style="font-family:'Share Tech Mono',monospace; font-size:0.65rem; color:#4a7a8a; margin-top:2px;">{row['Vol']}</div>
-                    </div>
+        <div class="dash-card">
+            <div class="card-title">Bitcoin (BTC) <span style="color: #F7931A; font-weight: bold;">{btc_price}</span></div>
+            <div class="card-subtitle" style="margin-bottom: 15px;">Multi-Timeframe Analysis</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="metric-box">
+                    <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">15 Min Trend</div>
+                    <div class="{get_class(scanner_engine.btc_mtfa['15m'])}">{scanner_engine.btc_mtfa['15m']}</div>
                 </div>
-                <div style="margin-top:8px;">
-                    <span class="metric-pill {pill_class}">CONF {conf_val}%</span>
-                    <span class="metric-pill pill-rr">RR {rr_display}</span>
-                    <span class="metric-pill" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); color:{adx_color}; font-family:'Share Tech Mono',monospace; font-size:0.65rem; padding:2px 7px; border-radius:2px;">ADX {row['ADX']}</span>
-                    <span class="metric-pill" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); color:#b0bec5; font-family:'Share Tech Mono',monospace; font-size:0.65rem; padding:2px 7px; border-radius:2px;">{bos_icon}</span>
+                <div class="metric-box">
+                    <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">1 Hour Trend</div>
+                    <div class="{get_class(scanner_engine.btc_mtfa['1H'])}">{scanner_engine.btc_mtfa['1H']}</div>
                 </div>
-                <div class="conf-bar-wrap">
-                    <div class="{bar_class}" style="width:{conf_val}%;"></div>
+                <div class="metric-box">
+                    <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">4 Hour Trend</div>
+                    <div class="{get_class(scanner_engine.btc_mtfa['4H'])}">{scanner_engine.btc_mtfa['4H']}</div>
                 </div>
-            </div>""", unsafe_allow_html=True)
-
-# ── RIGHT: FULL MARKET SCAN TABLE ──
-with right_col:
-    st.markdown(f"""
-    <div class="section-header">
-        ◈ MARKET SCAN — ALL PAIRS
-        <span class="section-badge">{total_scanned} MONITORED</span>
-    </div>""", unsafe_allow_html=True)
-
-    if not data:
-        st.markdown("""
-        <div class="scan-placeholder">
-            <span class="scanning-pulse"></span>
-            LOADING MARKET DATA...
-        </div>""", unsafe_allow_html=True)
-    else:
-        # Build HTML table
-        rows_html = ""
-        display_data = sorted(data, key=lambda x: (not x.get("is_cross"), -x.get("Conf", -1)))
-
-        for row in display_data:
-            sig = row["Signal"]
-            is_cross = row.get("is_cross", False)
-            conf_val = row["Conf"]
-            rr_val = row["RR"]
-
-            # Signal styling
-            if "LONG" in sig:
-                sig_html = f'<span class="scan-sig-long">▲ LONG CROSS</span>'
-                row_bg = "rgba(0,255,136,0.02)"
-            elif "SHORT" in sig:
-                sig_html = f'<span class="scan-sig-short">▼ SHORT CROSS</span>'
-                row_bg = "rgba(255,0,110,0.02)"
-            elif "UPTREND" in sig:
-                sig_html = f'<span style="color:#2a7a5a; font-size:0.75rem;">▲ Uptrend</span>'
-                row_bg = "transparent"
-            elif "DOWNTREND" in sig:
-                sig_html = f'<span style="color:#7a2a2a; font-size:0.75rem;">▼ Downtrend</span>'
-                row_bg = "transparent"
-            else:
-                sig_html = f'<span class="scan-sig-neutral">◆ Neutral</span>'
-                row_bg = "transparent"
-
-            # Confidence styling
-            if conf_val >= 70:
-                conf_html = f'<span class="scan-conf-high">{conf_val}%</span>'
-            elif conf_val >= 60:
-                conf_html = f'<span class="scan-conf-mid">{conf_val}%</span>'
-            elif conf_val > 0:
-                conf_html = f'<span style="color:#ff006e; font-family:Share Tech Mono,monospace; font-size:0.75rem;">{conf_val}%</span>'
-            else:
-                conf_html = f'<span class="scan-conf-na">—</span>'
-
-            rr_html = f'<span class="scan-rr">1:{rr_val}</span>' if rr_val > 0 else '<span class="scan-conf-na">—</span>'
-            price_html = f'<span class="scan-price">${row["Price"]}</span>'
-            symbol_display = row["Asset"].replace("USDT", "")
-
-            rows_html += f"""
-            <div class="scan-row" style="background:{row_bg};">
-                <div class="scan-symbol">{symbol_display}<span style="color:#4a7a8a; font-size:0.6rem;">/USDT</span></div>
-                <div>{sig_html}</div>
-                <div>{conf_html}</div>
-                <div>{rr_html}</div>
-                <div>{price_html}</div>
-            </div>"""
-
-        st.markdown(f"""
-        <div class="scan-table-wrap">
-            <div class="scan-header">
-                <span>ASSET</span>
-                <span>SIGNAL</span>
-                <span>CONF</span>
-                <span>R:R</span>
-                <span>PRICE</span>
+                <div class="metric-box">
+                    <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">Daily Trend</div>
+                    <div class="{get_class(scanner_engine.btc_mtfa['1D'])}">{scanner_engine.btc_mtfa['1D']}</div>
+                </div>
             </div>
-            <div style="max-height:620px; overflow-y:auto;">
-                {rows_html}
+        </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown("""
+        <div class="dash-card">
+            <div class="card-title">Active Bots & Scanning</div>
+            <div class="card-subtitle" style="margin-bottom: 15px;">Target: Binance USDT Pairs</div>
+            <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #5D88FF;">
+                <div style="color: white; font-size: 14px; display: flex; justify-content: space-between;">
+                    <span>⚡ Institutional Scanner</span>
+                    <span style="color: #00E676;">+ Active</span>
+                </div>
+                <div style="color: #8C9BB5; font-size: 12px; margin-top: 5px;">Scanning 300+ Pairs Live</div>
             </div>
-        </div>""", unsafe_allow_html=True)
+            <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; border-left: 3px solid #00E676;">
+                <div style="color: white; font-size: 14px; display: flex; justify-content: space-between;">
+                    <span>📲 Telegram Integration</span>
+                    <span style="color: #00E676;">+ Connected</span>
+                </div>
+                <div style="color: #8C9BB5; font-size: 12px; margin-top: 5px;">Sending Signals automatically</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Bottom Section: Table
+if not scanner_engine.results_data:
+    st.markdown("""
+        <div class="dash-card" style="text-align: center; padding: 40px;">
+            <h3 style="color: #5D88FF;">⏳ Booting Master Engine & Scanning 300 coins...</h3>
+            <p style="color: #8C9BB5;">Please wait while the algorithm gathers the initial data set.</p>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <div class="dash-card" style="padding-bottom: 0;">
+            <div class="card-title">🌐 Live Market Activity <span style="font-size: 12px; font-weight: normal; background: rgba(93,136,255,0.2); padding: 3px 8px; border-radius: 5px; color: #5D88FF;">Top Gainers / Scans</span></div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    df_alt = pd.DataFrame(scanner_engine.results_data)
+    
+    # Styled dataframe
+    def color_rows(val):
+        if isinstance(val, str):
+            if 'CROSS' in val: 
+                return 'background-color: rgba(93, 136, 255, 0.2); color: #FFFFFF; font-weight: bold; border-left: 2px solid #5D88FF;'
+            if '%' in val:
+                try:
+                    num = int(val.replace('%', ''))
+                    return 'color: #00E676; font-weight: bold;' if num >= 70 else 'color: #F7931A; font-weight: bold;' if num >= 60 else 'color: #FF4B4B; font-weight: bold;'
+                except: pass
+            if 'UPTREND' in val: return 'color: #00E676;'
+            if 'DOWNTREND' in val: return 'color: #FF4B4B;'
+            if 'SIDEWAY' in val: return 'color: #8C9BB5;'
+        return ''
+    
+    st.dataframe(df_alt.style.map(color_rows), use_container_width=True, height=500, hide_index=True)
