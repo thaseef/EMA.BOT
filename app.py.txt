@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -15,10 +16,10 @@ st.set_page_config(
     page_title="INSTITUTIONAL ALGO V3",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" # Collapsed to mimic the full-width dashboard design
 )
 
-# Custom CSS to match the Dark Neon UI
+# Custom CSS to match the Dark Neon UI from the reference image
 st.markdown("""
     <style>
     /* Main Background */
@@ -140,7 +141,7 @@ LONG_EMA = 200
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 # -----------------------------
-# Background Engine with RSI Sweet Spot Logic
+# Background Engine (Untouched)
 # -----------------------------
 class BackgroundScanner:
     def __init__(self):
@@ -330,9 +331,6 @@ class BackgroundScanner:
                         signal_type = "LONG" if "LONG" in sig else "SHORT"
                         bos_status = self.check_bos(df, signal_type)
                         
-                        # 1. Fetch 1H RSI early to use in our confidence scoring
-                        current_1h_rsi = self.fetch_rsi(symbol, "1h")
-                        
                         closed_vol = df["vol"].iloc[-2]
                         avg_vol_20 = df["vol"].iloc[-22:-2].mean()
                         vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
@@ -340,42 +338,24 @@ class BackgroundScanner:
                         rr, sl, tp = self.calculate_rr(df, signal_type, price)
                         session_name, session_weight = self.get_session_weight()
                         
-                        # -------------------------------------------------
-                        # Master Scoring Algorithm (With RSI Sweet Spots)
-                        # -------------------------------------------------
-                        raw_conf = 35 # Base confidence
-                        
-                        # ADX & BOS Filters
+                        # Master Scoring Algorithm (Adjusted without Pullback)
+                        raw_conf = 45 # Slightly higher base
                         if adx_val > 25: raw_conf += 15
-                        if adx_val < 20: raw_conf -= 30
-                        if bos_status: raw_conf += 15
-                        
-                        # Volume & Session Filters
-                        if "MASSIVE" in vol_status: raw_conf += 10
+                        if adx_val < 20: raw_conf -= 40
+                        if bos_status: raw_conf += 20
+                        if "MASSIVE" in vol_status: raw_conf += 15
                         elif "Low Volume" in vol_status: raw_conf -= 20
                         raw_conf += session_weight 
-
-                        # RSI SWEET SPOT LOGIC
-                        if signal_type == "LONG":
-                            if 55 <= current_1h_rsi <= 68:
-                                raw_conf += 25  # Optimal momentum
-                            elif current_1h_rsi > 70:
-                                raw_conf -= 15  # Penalize overbought
-                        
-                        elif signal_type == "SHORT":
-                            if 31 <= current_1h_rsi <= 55:
-                                raw_conf += 25  # Optimal momentum
-                            elif current_1h_rsi < 30:
-                                raw_conf -= 15  # Penalize oversold
 
                         conf = max(0, min(100, raw_conf))
 
                         # Threshold Logic
                         if conf >= 60 and rr >= 2.0:
                             if self.alerted_candles.get(symbol) != closed_candle_time:
+                                # Fetch MTF RSIs only when an alert is valid
                                 mtf_rsis = {
                                     "15m": self.fetch_rsi(symbol, "15m"),
-                                    "1H": current_1h_rsi, 
+                                    "1H": self.fetch_rsi(symbol, "1h"),
                                     "4H": self.fetch_rsi(symbol, "4h"),
                                     "1D": self.fetch_rsi(symbol, "1d")
                                 }
@@ -436,7 +416,7 @@ with col1:
             <div class="card-subtitle" style="margin-bottom: 15px;">Smart Money Concept Filters</div>
             <div class="filter-item">✔️ 1H Momentum Cross (EMA 21/200)</div>
             <div class="filter-item">✔️ 1:2 Minimum Risk-to-Reward</div>
-            <div class="filter-item">✔️ RSI Sweet Spot (L: 55-68 | S: 31-55)</div>
+            <div class="filter-item">✔️ Session Liquidity Weights</div>
             <div class="filter-item" style="border: none;">✔️ ADX Regime & BOS Structure</div>
         </div>
     """, unsafe_allow_html=True)
