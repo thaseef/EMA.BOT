@@ -15,10 +15,10 @@ st.set_page_config(
     page_title="INSTITUTIONAL ALGO V3",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed" # Collapsed to mimic the full-width dashboard design
+    initial_sidebar_state="collapsed"
 )
 
-# Custom CSS to match the Dark Neon UI from the reference image
+# Custom CSS to match the Dark Neon UI
 st.markdown("""
     <style>
     /* Main Background */
@@ -140,7 +140,7 @@ LONG_EMA = 200
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 # -----------------------------
-# Background Engine (Untouched)
+# Background Engine with RSI Sweet Spot & Click Actions
 # -----------------------------
 class BackgroundScanner:
     def __init__(self):
@@ -330,6 +330,8 @@ class BackgroundScanner:
                         signal_type = "LONG" if "LONG" in sig else "SHORT"
                         bos_status = self.check_bos(df, signal_type)
                         
+                        current_1h_rsi = self.fetch_rsi(symbol, "1h")
+                        
                         closed_vol = df["vol"].iloc[-2]
                         avg_vol_20 = df["vol"].iloc[-22:-2].mean()
                         vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
@@ -337,36 +339,53 @@ class BackgroundScanner:
                         rr, sl, tp = self.calculate_rr(df, signal_type, price)
                         session_name, session_weight = self.get_session_weight()
                         
-                        # Master Scoring Algorithm (Adjusted without Pullback)
-                        raw_conf = 45 # Slightly higher base
+                        raw_conf = 35 
+                        
                         if adx_val > 25: raw_conf += 15
-                        if adx_val < 20: raw_conf -= 40
-                        if bos_status: raw_conf += 20
-                        if "MASSIVE" in vol_status: raw_conf += 15
+                        if adx_val < 20: raw_conf -= 30
+                        if bos_status: raw_conf += 15
+                        
+                        if "MASSIVE" in vol_status: raw_conf += 10
                         elif "Low Volume" in vol_status: raw_conf -= 20
                         raw_conf += session_weight 
 
+                        if signal_type == "LONG":
+                            if 55 <= current_1h_rsi <= 68:
+                                raw_conf += 25  
+                            elif current_1h_rsi > 70:
+                                raw_conf -= 15  
+                        
+                        elif signal_type == "SHORT":
+                            if 31 <= current_1h_rsi <= 55:
+                                raw_conf += 25  
+                            elif current_1h_rsi < 30:
+                                raw_conf -= 15  
+
                         conf = max(0, min(100, raw_conf))
 
-                        # Threshold Logic
                         if conf >= 60 and rr >= 2.0:
                             if self.alerted_candles.get(symbol) != closed_candle_time:
-                                # Fetch MTF RSIs only when an alert is valid
                                 mtf_rsis = {
                                     "15m": self.fetch_rsi(symbol, "15m"),
-                                    "1H": self.fetch_rsi(symbol, "1h"),
+                                    "1H": current_1h_rsi, 
                                     "4H": self.fetch_rsi(symbol, "4h"),
                                     "1D": self.fetch_rsi(symbol, "1d")
                                 }
                                 self.send_telegram(symbol, sig, specific_trend, conf, adx_val, bos_status, rr, sl, tp, session_name, round(price,6), mtf_rsis, vol_status)
                                 self.alerted_candles[symbol] = closed_candle_time
 
+                    # -----------------------------------------------------------------
+                    # UI UPDATE: Appended "Action" URL for TradingView integration
+                    # -----------------------------------------------------------------
+                    tv_symbol = symbol.replace("USDT", "USDT") # Formatting safety
                     new_results.append({
-                        "Asset": symbol, "Signal": sig, 
+                        "Asset": symbol, 
+                        "Signal": sig, 
                         "Conf": f"{conf}%" if is_cross else "-",
                         "RR Ratio": f"1:{rr}" if is_cross and rr > 0 else "-",
                         "Session": "Active" if is_cross else "-",
-                        "Price": f"${round(price, 6)}"
+                        "Price": f"${round(price, 6)}",
+                        "Action": f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
                     })
                 except: pass
 
@@ -415,7 +434,7 @@ with col1:
             <div class="card-subtitle" style="margin-bottom: 15px;">Smart Money Concept Filters</div>
             <div class="filter-item">✔️ 1H Momentum Cross (EMA 21/200)</div>
             <div class="filter-item">✔️ 1:2 Minimum Risk-to-Reward</div>
-            <div class="filter-item">✔️ Session Liquidity Weights</div>
+            <div class="filter-item">✔️ RSI Sweet Spot (L: 55-68 | S: 31-55)</div>
             <div class="filter-item" style="border: none;">✔️ ADX Regime & BOS Structure</div>
         </div>
     """, unsafe_allow_html=True)
@@ -471,7 +490,7 @@ with col3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Bottom Section: Table
+# Bottom Section: Table Logic
 if not scanner_engine.results_data:
     st.markdown("""
         <div class="dash-card" style="text-align: center; padding: 40px;">
@@ -480,17 +499,16 @@ if not scanner_engine.results_data:
         </div>
     """, unsafe_allow_html=True)
 else:
-    st.markdown("""
-        <div class="dash-card" style="padding-bottom: 0;">
-            <div class="card-title">🌐 Live Market Activity <span style="font-size: 12px; font-weight: normal; background: rgba(93,136,255,0.2); padding: 3px 8px; border-radius: 5px; color: #5D88FF;">Top Gainers / Scans</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+    df_all = pd.DataFrame(scanner_engine.results_data)
     
-    df_alt = pd.DataFrame(scanner_engine.results_data)
+    # Filter out crosses
+    df_crosses = df_all[df_all['Signal'].str.contains('CROSS', na=False)]
+    df_others = df_all[~df_all['Signal'].str.contains('CROSS', na=False)]
     
-    # Styled dataframe
+    # Styled dataframe helper function (Ignore URL string formatting)
     def color_rows(val):
         if isinstance(val, str):
+            if 'http' in val: return '' 
             if 'CROSS' in val: 
                 return 'background-color: rgba(93, 136, 255, 0.2); color: #FFFFFF; font-weight: bold; border-left: 2px solid #5D88FF;'
             if '%' in val:
@@ -502,5 +520,38 @@ else:
             if 'DOWNTREND' in val: return 'color: #FF4B4B;'
             if 'SIDEWAY' in val: return 'color: #8C9BB5;'
         return ''
+
+    # -----------------------------------------------------------------
+    # UI UPDATE: Configured "Action" column as a clickable LinkColumn
+    # -----------------------------------------------------------------
+    link_config = {
+        "Action": st.column_config.LinkColumn(
+            "Trade / Chart",
+            display_text="📈 View Chart",
+            width="small"
+        )
+    }
+
+    # 1. Active Cross Over Section
+    if not df_crosses.empty:
+        st.markdown("""
+            <div class="dash-card" style="padding-bottom: 0; border: 1px solid #5D88FF; background: rgba(93, 136, 255, 0.05); margin-bottom: 20px;">
+                <div class="card-title" style="color: #5D88FF; text-shadow: 0 0 10px rgba(93,136,255,0.5);">🚀 ACTIVE CROSSOVERS DETECTED</div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.dataframe(df_crosses.style.map(color_rows), use_container_width=True, hide_index=True, column_config=link_config)
+    else:
+        st.markdown("""
+            <div class="dash-card" style="padding: 15px; margin-bottom: 20px; border: 1px dashed rgba(41, 56, 102, 0.8);">
+                <div style="color: #8C9BB5; text-align: center; font-size: 14px;">No active crossovers at this moment. Scanning for setups...</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # 2. General Market Activity Section
+    st.markdown("""
+        <div class="dash-card" style="padding-bottom: 0;">
+            <div class="card-title">🌐 Live Market Activity <span style="font-size: 12px; font-weight: normal; background: rgba(93,136,255,0.2); padding: 3px 8px; border-radius: 5px; color: #5D88FF;">General Overview</span></div>
+        </div>
+    """, unsafe_allow_html=True)
     
-    st.dataframe(df_alt.style.map(color_rows), use_container_width=True, height=500, hide_index=True)
+    st.dataframe(df_others.style.map(color_rows), use_container_width=True, height=400, hide_index=True, column_config=link_config)
