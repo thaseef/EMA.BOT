@@ -12,7 +12,7 @@ import pytz
 # Page Configuration & Styling
 # -----------------------------
 st.set_page_config(
-    page_title="INSTITUTIONAL ALGO V3",
+    page_title="INSTITUTIONAL ALGO V5",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -21,109 +21,35 @@ st.set_page_config(
 # Custom CSS to match the Dark Neon UI
 st.markdown("""
     <style>
-    /* Main Background */
     .stApp {
         background-color: #050714 !important;
         background-image: radial-gradient(circle at top right, #101630 0%, #050714 60%);
         color: #E0E6ED;
         font-family: 'Inter', sans-serif;
     }
-    
-    /* Hide top header */
-    header[data-testid="stHeader"] {
-        background: transparent !important;
-    }
-
-    /* Top Navigation Mockup */
+    header[data-testid="stHeader"] { background: transparent !important; }
     .top-nav {
-        display: flex;
-        align-items: center;
-        background: rgba(16, 22, 48, 0.6);
-        border: 1px solid rgba(41, 56, 102, 0.5);
-        border-radius: 12px;
-        padding: 15px 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        display: flex; align-items: center; background: rgba(16, 22, 48, 0.6);
+        border: 1px solid rgba(41, 56, 102, 0.5); border-radius: 12px;
+        padding: 15px 25px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         backdrop-filter: blur(8px);
     }
-    .top-nav-logo {
-        font-size: 20px;
-        font-weight: 800;
-        color: #5D88FF;
-        margin-right: 40px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .top-nav-item {
-        color: #8C9BB5;
-        margin-right: 30px;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    .top-nav-item.active {
-        color: #FFFFFF;
-        background: rgba(93, 136, 255, 0.15);
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(93, 136, 255, 0.3);
-    }
-
-    /* Dashboard Cards */
-    .dash-card {
-        background: rgba(13, 18, 38, 0.7);
-        border: 1px solid rgba(34, 46, 84, 0.8);
-        border-radius: 16px;
-        padding: 20px;
-        height: 100%;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        backdrop-filter: blur(10px);
-    }
-    .card-title {
-        color: #FFFFFF;
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .card-subtitle {
-        color: #8C9BB5;
-        font-size: 12px;
-    }
-    
-    /* Metrics inner cards */
-    .metric-box {
-        background: rgba(5, 7, 20, 0.5);
-        border: 1px solid rgba(41, 56, 102, 0.4);
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        margin-bottom: 10px;
-    }
+    .top-nav-logo { font-size: 20px; font-weight: 800; color: #5D88FF; margin-right: 40px; display: flex; align-items: center; gap: 10px; }
+    .top-nav-item { color: #8C9BB5; margin-right: 30px; font-size: 14px; font-weight: 500; }
+    .top-nav-item.active { color: #FFFFFF; background: rgba(93, 136, 255, 0.15); padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(93, 136, 255, 0.3); }
+    .dash-card { background: rgba(13, 18, 38, 0.7); border: 1px solid rgba(34, 46, 84, 0.8); border-radius: 16px; padding: 20px; height: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); backdrop-filter: blur(10px); }
+    .card-title { color: #FFFFFF; font-size: 16px; font-weight: 600; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .card-subtitle { color: #8C9BB5; font-size: 12px; }
+    .metric-box { background: rgba(5, 7, 20, 0.5); border: 1px solid rgba(41, 56, 102, 0.4); border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 10px; }
     .metric-value-up { color: #00E676; font-weight: 700; font-size: 16px; }
     .metric-value-down { color: #FF4B4B; font-weight: 700; font-size: 16px; }
     .metric-value-neutral { color: #B0BEC5; font-weight: 700; font-size: 16px; }
-    
-    /* Dataframe Styling */
-    [data-testid="stDataFrame"] {
-        background: rgba(13, 18, 38, 0.7);
-        border: 1px solid rgba(34, 46, 84, 0.8);
-        border-radius: 16px;
-        padding: 10px;
-    }
-    
-    /* Specific text colors */
+    [data-testid="stDataFrame"] { background: rgba(13, 18, 38, 0.7); border: 1px solid rgba(34, 46, 84, 0.8); border-radius: 16px; padding: 10px; }
     .text-glow-blue { color: #5D88FF; text-shadow: 0 0 10px rgba(93, 136, 255, 0.4); }
+    .filter-item { color: #8C9BB5; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(41, 56, 102, 0.3); }
     
-    /* Filter list styling */
-    .filter-item {
-        color: #8C9BB5;
-        font-size: 13px;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(41, 56, 102, 0.3);
-    }
+    /* Style for the Radio Buttons */
+    div.row-widget.stRadio > div { flex-direction: column; gap: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -135,12 +61,12 @@ st_autorefresh(interval=30000, key="datarefresh")
 TELEGRAM_TOKEN = "8761349419:AAHbMQy2eCqQ9RjgSP99KXY-8fVJ0caVf7Y"
 TELEGRAM_CHAT_ID = "7999641132"
 
-SHORT_EMA = 21
+SHORT_EMA = 50
 LONG_EMA = 200
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 # -----------------------------
-# Background Engine with RSI Sweet Spot & Click Actions
+# Background Engine with Advanced 1H/15M Scoring
 # -----------------------------
 class BackgroundScanner:
     def __init__(self):
@@ -148,6 +74,10 @@ class BackgroundScanner:
         self.btc_mtfa = {"Price": "$0.00", "15m": "⚪ Scanning", "1H": "⚪ Scanning", "4H": "⚪ Scanning", "1D": "⚪ Scanning"}
         self.last_update_time = "Booting Master Engine..."
         self.alerted_candles = {}
+        
+        # 🚀 NEW: Dynamic variable linked to the dashboard
+        self.min_alert_confidence = 85 
+        
         self.is_running = True
 
         thread = threading.Thread(target=self.scan_loop, daemon=True)
@@ -200,7 +130,7 @@ class BackgroundScanner:
                 return df['close'].iloc[-1] < recent_low
         except: return False
 
-    def fetch_rsi(self, symbol, interval):
+    def fetch_rsi_advanced(self, symbol, interval):
         try:
             params = {"symbol": symbol, "interval": interval, "limit": 100}
             resp = requests.get(BASE_URL, params=params, timeout=5).json()
@@ -209,75 +139,48 @@ class BackgroundScanner:
             up = delta.clip(lower=0)
             down = -1 * delta.clip(upper=0)
             rs = up.ewm(com=13, adjust=False).mean() / down.ewm(com=13, adjust=False).mean()
-            return round(100 - (100 / (1 + rs)).iloc[-1], 2)
-        except: return 50.0
+            rsi = 100 - (100 / (1 + rs))
+            return round(rsi.iloc[-1], 2), round(rsi.iloc[-2], 2)
+        except: return 50.0, 50.0
 
-    def calculate_rr(self, df, signal_type, entry_price):
+    def get_1h_trend(self, symbol):
         try:
-            lookback = df.iloc[-10:-1]
-            if signal_type == "LONG":
-                sl = lookback['low'].min() * 0.998
-                risk = entry_price - sl
-                if risk <= 0: return 0, sl, 0
-                tp = entry_price + (risk * 2) 
-                rr = (tp - entry_price) / risk
-                return round(rr, 2), round(sl, 4), round(tp, 4)
-            else:
-                sl = lookback['high'].max() * 1.002
-                risk = sl - entry_price
-                if risk <= 0: return 0, sl, 0
-                tp = entry_price - (risk * 2)
-                rr = (entry_price - tp) / risk
-                return round(rr, 2), round(sl, 4), round(tp, 4)
-        except: return 0, 0, 0
-
-    def get_session_weight(self):
-        utc_now = datetime.now(pytz.utc).time()
-        london_start, london_end = dt_time(8, 0), dt_time(16, 0)
-        ny_start, ny_end = dt_time(13, 0), dt_time(21, 0)
-        asian_start, asian_end = dt_time(0, 0), dt_time(6, 0)
-
-        if (london_start <= utc_now <= london_end) or (ny_start <= utc_now <= ny_end):
-            return "🔥 HIGH (London/NY Open)", 15 
-        elif asian_start <= utc_now <= asian_end:
-            return "🧊 LOW (Asian Dead Zone)", -10 
-        else:
-            return "⚪ NORMAL (Mid Session)", 0
+            params = {"symbol": symbol, "interval": "1h", "limit": 250}
+            resp = requests.get(BASE_URL, params=params, timeout=5).json()
+            close_prices = pd.Series([float(x[4]) for x in resp])
+            ema_50 = close_prices.ewm(span=SHORT_EMA, adjust=False).mean().iloc[-2]
+            ema_200 = close_prices.ewm(span=LONG_EMA, adjust=False).mean().iloc[-2]
+            if ema_50 > ema_200: return "UPTREND"
+            elif ema_50 < ema_200: return "DOWNTREND"
+            else: return "SIDEWAY"
+        except: return "ERROR"
 
     def get_btc_trend(self, interval):
         try:
             params = {"symbol": "BTCUSDT", "interval": interval, "limit": 250}
             resp = requests.get(BASE_URL, params=params, timeout=5).json()
             close_prices = pd.Series([float(x[4]) for x in resp])
-            ema_21 = close_prices.ewm(span=SHORT_EMA, adjust=False).mean().iloc[-2]
+            ema_50 = close_prices.ewm(span=SHORT_EMA, adjust=False).mean().iloc[-2]
             ema_200 = close_prices.ewm(span=LONG_EMA, adjust=False).mean().iloc[-2]
-            if ema_21 > ema_200: return "🟢 UPTREND"
-            elif ema_21 < ema_200: return "🔴 DOWNTREND"
+            if ema_50 > ema_200: return "🟢 UPTREND"
+            elif ema_50 < ema_200: return "🔴 DOWNTREND"
             else: return "⚪ SIDEWAY"
         except: return "⚪ ERROR"
 
-    def send_telegram(self, coin, signal, trend, conf, adx, bos, rr, sl, tp, session, price, rsis, vol):
+    def send_telegram(self, coin, signal, conf, trend_1h, rsi_val, rsi_dir, vol, extra_conf):
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID: return
-        conf_icon = "🔥" if conf >= 80 else "⚠️" if conf >= 60 else "🛑"
-        bos_text = "✅ CONFIRMED" if bos else "❌ NO BREAK"
+        conf_icon = "🔥" if conf >= 85 else "⚠️" 
         
         message = (
-            f"⚡ *INSTITUTIONAL ALERT: {coin}* ⚡\n\n"
+            f"⚡ *ALGO ALERT: {coin}* ⚡\n\n"
             f"**Action:** {signal}\n"
-            f"**Confidence:** {conf_icon} {conf}%\n"
-            f"**Liquidity Zone:** {session}\n\n"
-            f"🎯 **Trade Execution:**\n"
-            f"• Entry Price: ${price}\n"
-            f"• Take Profit: ${tp}\n"
-            f"• Stop Loss: ${sl}\n"
-            f"• Risk/Reward: 1:{rr}\n\n"
-            f"🔍 **Smart Money Filters:**\n"
-            f"• Market Regime: ADX {adx}\n"
-            f"• Structure (BOS): {bos_text}\n"
-            f"• Volume Check: {vol}\n"
-            f"• 1H Trend: {trend}\n\n"
-            f"📊 **MTFA RSI:**\n"
-            f"• 15m: {rsis['15m']} | 1H: {rsis['1H']} | 4H: {rsis['4H']} | 1D: {rsis['1D']}"
+            f"**Confidence:** {conf_icon} {conf}%\n\n"
+            f"📈 **Execution Strategy:**\n"
+            f"• 1H Macro Trend: {trend_1h}\n"
+            f"• 15M Trigger: Valid Cross & Price Align\n"
+            f"• 15M RSI: {rsi_val} ({rsi_dir})\n"
+            f"• Volume Spike: {vol}\n"
+            f"• Extra Confluence: {extra_conf}"
         )
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         try: requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}, timeout=5)
@@ -299,7 +202,7 @@ class BackgroundScanner:
 
             for symbol in coins:
                 try:
-                    params = {"symbol": symbol, "interval": "1h", "limit": 250}
+                    params = {"symbol": symbol, "interval": "15m", "limit": 250}
                     resp = requests.get(BASE_URL, params=params, timeout=5).json()
                     df = pd.DataFrame(resp, columns=["open_time", "open", "high", "low", "close", "vol", "close_time", "qav", "not", "tbbv", "tbqv", "ig"])
                     df[["open", "high", "low", "close", "vol"]] = df[["open", "high", "low", "close", "vol"]].astype(float)
@@ -313,77 +216,74 @@ class BackgroundScanner:
                     closed_candle_time = df["close_time"].iloc[-2]
 
                     sig, specific_trend, is_cross = "⚪ Neutral", "⚪ SIDEWAY", False
-                    adx_val, bos_status, conf, rr = 0, False, 0, 0
+                    conf = 0
                     vol_status = "-"
 
                     if curr_e_short > curr_e_long: specific_trend = "🟢 UPTREND"
                     elif curr_e_short < curr_e_long: specific_trend = "🔴 DOWNTREND"
 
                     if prev_e_short <= prev_e_long and curr_e_short > curr_e_long:
-                        sig, is_cross = "🚀 1H LONG CROSS", True
+                        sig, is_cross = "🚀 15M LONG CROSS", True
                     elif prev_e_short >= prev_e_long and curr_e_short < curr_e_long:
-                        sig, is_cross = "🔻 1H SHORT CROSS", True
+                        sig, is_cross = "🔻 15M SHORT CROSS", True
                     else: sig = specific_trend
 
                     if is_cross:
-                        adx_val = self.calculate_adx(df)
+                        conf += 25 
                         signal_type = "LONG" if "LONG" in sig else "SHORT"
-                        bos_status = self.check_bos(df, signal_type)
                         
-                        current_1h_rsi = self.fetch_rsi(symbol, "1h")
+                        trend_1h = self.get_1h_trend(symbol)
                         
-                        closed_vol = df["vol"].iloc[-2]
-                        avg_vol_20 = df["vol"].iloc[-22:-2].mean()
-                        vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
+                        price_above_emas = (price > curr_e_short) and (price > curr_e_long)
+                        price_below_emas = (price < curr_e_short) and (price < curr_e_long)
                         
-                        rr, sl, tp = self.calculate_rr(df, signal_type, price)
-                        session_name, session_weight = self.get_session_weight()
-                        
-                        raw_conf = 35 
-                        
-                        if adx_val > 25: raw_conf += 15
-                        if adx_val < 20: raw_conf -= 30
-                        if bos_status: raw_conf += 15
-                        
-                        if "MASSIVE" in vol_status: raw_conf += 10
-                        elif "Low Volume" in vol_status: raw_conf -= 20
-                        raw_conf += session_weight 
+                        trend_aligned = False
+                        if signal_type == "LONG" and trend_1h == "UPTREND" and price_above_emas:
+                            trend_aligned = True
+                            conf += 25 
+                        elif signal_type == "SHORT" and trend_1h == "DOWNTREND" and price_below_emas:
+                            trend_aligned = True
+                            conf += 25 
+                            
+                        if not trend_aligned:
+                            sig = "🚫 BLOCKED (Counter-Trend)"
+                            conf = 0 
+                        else:
+                            curr_rsi, prev_rsi = self.fetch_rsi_advanced(symbol, "15m")
+                            rsi_rising = curr_rsi > prev_rsi
+                            rsi_dir_text = "Rising 📈" if rsi_rising else "Falling 📉"
+                            
+                            if signal_type == "LONG" and (55 <= curr_rsi <= 68) and rsi_rising:
+                                conf += 25 
+                            elif signal_type == "SHORT" and (32 <= curr_rsi <= 45) and not rsi_rising:
+                                conf += 25 
+                                
+                            closed_vol = df["vol"].iloc[-2]
+                            avg_vol_20 = df["vol"].iloc[-22:-2].mean()
+                            vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
+                            
+                            if "MASSIVE" in vol_status or "SURGE" in vol_status:
+                                conf += 15 
+                                
+                            adx_val = self.calculate_adx(df)
+                            bos_status = self.check_bos(df, signal_type)
+                            extra_conf = "None"
+                            
+                            if bos_status or adx_val > 25:
+                                conf += 10 
+                                extra_conf = "Structure/ADX Verified ✅"
 
-                        if signal_type == "LONG":
-                            if 55 <= current_1h_rsi <= 68:
-                                raw_conf += 25  
-                            elif current_1h_rsi > 70:
-                                raw_conf -= 15  
-                        
-                        elif signal_type == "SHORT":
-                            if 31 <= current_1h_rsi <= 55:
-                                raw_conf += 25  
-                            elif current_1h_rsi < 30:
-                                raw_conf -= 15  
+                            # 🚀 NEW: DYNAMIC FINAL DECISION ALGORITHM
+                            if conf >= self.min_alert_confidence: 
+                                if self.alerted_candles.get(symbol) != closed_candle_time:
+                                    self.send_telegram(symbol, sig, conf, trend_1h, curr_rsi, rsi_dir_text, vol_status, extra_conf)
+                                    self.alerted_candles[symbol] = closed_candle_time
 
-                        conf = max(0, min(100, raw_conf))
-
-                        if conf >= 60 and rr >= 2.0:
-                            if self.alerted_candles.get(symbol) != closed_candle_time:
-                                mtf_rsis = {
-                                    "15m": self.fetch_rsi(symbol, "15m"),
-                                    "1H": current_1h_rsi, 
-                                    "4H": self.fetch_rsi(symbol, "4h"),
-                                    "1D": self.fetch_rsi(symbol, "1d")
-                                }
-                                self.send_telegram(symbol, sig, specific_trend, conf, adx_val, bos_status, rr, sl, tp, session_name, round(price,6), mtf_rsis, vol_status)
-                                self.alerted_candles[symbol] = closed_candle_time
-
-                    # -----------------------------------------------------------------
-                    # UI UPDATE: Appended "Action" URL for TradingView integration
-                    # -----------------------------------------------------------------
-                    tv_symbol = symbol.replace("USDT", "USDT") # Formatting safety
+                    tv_symbol = symbol.replace("USDT", "USDT")
                     new_results.append({
                         "Asset": symbol, 
                         "Signal": sig, 
                         "Conf": f"{conf}%" if is_cross else "-",
-                        "RR Ratio": f"1:{rr}" if is_cross and rr > 0 else "-",
-                        "Session": "Active" if is_cross else "-",
                         "Price": f"${round(price, 6)}",
                         "Action": f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
                     })
@@ -401,12 +301,10 @@ scanner_engine = get_scanner()
 # -----------------------------
 # Professional UI Construction
 # -----------------------------
-
-# Simulated Top Navigation Bar
 st.markdown(f"""
     <div class="top-nav">
         <div class="top-nav-logo">
-            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO</span>
+            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO V5</span>
         </div>
         <div style="display: flex;">
             <div class="top-nav-item active">🖥 Dashboard</div>
@@ -421,7 +319,6 @@ st.markdown(f"""
 
 st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: -10px;'>My Dashboard</h3>", unsafe_allow_html=True)
 
-# Top Section: 3 Columns
 col1, col2, col3 = st.columns([1, 1, 1])
 
 def get_class(trend): 
@@ -431,11 +328,11 @@ with col1:
     st.markdown("""
         <div class="dash-card">
             <div class="card-title">Engine Overview <span style="font-size: 12px; color: #00E676;">● Active</span></div>
-            <div class="card-subtitle" style="margin-bottom: 15px;">Smart Money Concept Filters</div>
-            <div class="filter-item">✔️ 1H Momentum Cross (EMA 21/200)</div>
-            <div class="filter-item">✔️ 1:2 Minimum Risk-to-Reward</div>
-            <div class="filter-item">✔️ RSI Sweet Spot (L: 55-68 | S: 31-55)</div>
-            <div class="filter-item" style="border: none;">✔️ ADX Regime & BOS Structure</div>
+            <div class="card-subtitle" style="margin-bottom: 15px;">100-Point Scoring System</div>
+            <div class="filter-item">✔️ 1H Trend Alignment (+25%)</div>
+            <div class="filter-item">✔️ 15M EMA 50/200 Trigger (+25%)</div>
+            <div class="filter-item">✔️ RSI Sweet Spot & Direction (+25%)</div>
+            <div class="filter-item" style="border: none;">✔️ Volume Spike (+15%) & ADX (+10%)</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -443,8 +340,8 @@ with col2:
     btc_price = scanner_engine.btc_mtfa['Price']
     st.markdown(f"""
         <div class="dash-card">
-            <div class="card-title">Bitcoin (BTC) <span style="color: #F7931A; font-weight: bold;">{btc_price}</span></div>
-            <div class="card-subtitle" style="margin-bottom: 15px;">Multi-Timeframe Analysis</div>
+            <div class="card-title">Bitcoin (BTC) <span style="color: #5D88FF; font-weight: bold;">{btc_price}</span></div>
+            <div class="card-subtitle" style="margin-bottom: 15px;">Multi-Timeframe Analysis (50/200)</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="metric-box">
                     <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">15 Min Trend</div>
@@ -467,30 +364,40 @@ with col2:
     """, unsafe_allow_html=True)
 
 with col3:
+    # We create the outer card container
     st.markdown("""
         <div class="dash-card">
-            <div class="card-title">Active Bots & Scanning</div>
-            <div class="card-subtitle" style="margin-bottom: 15px;">Target: Binance USDT Pairs</div>
-            <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #5D88FF;">
-                <div style="color: white; font-size: 14px; display: flex; justify-content: space-between;">
-                    <span>⚡ Institutional Scanner</span>
-                    <span style="color: #00E676;">+ Active</span>
-                </div>
-                <div style="color: #8C9BB5; font-size: 12px; margin-top: 5px;">Scanning 300+ Pairs Live</div>
-            </div>
-            <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; border-left: 3px solid #00E676;">
+            <div class="card-title">Notification Settings <span style="font-size: 12px; color: #5D88FF;">⚙️ Config</span></div>
+            <div class="card-subtitle" style="margin-bottom: 15px;">Target: Telegram Push Alerts</div>
+    """, unsafe_allow_html=True)
+
+    # 🚀 NEW: The Interactive Dashboard Radio Buttons
+    alert_threshold = st.radio(
+        "Set Minimum Telegram Trigger Level:",
+        ("85% (Strict / High Confirmation)", "65% (Aggressive / Medium Confirmation)"),
+        label_visibility="collapsed"
+    )
+
+    # Automatically update the background thread based on user click
+    if "85" in alert_threshold:
+        scanner_engine.min_alert_confidence = 85
+    else:
+        scanner_engine.min_alert_confidence = 65
+
+    # Display the current active status beautifully
+    st.markdown(f"""
+            <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 3px solid #00E676;">
                 <div style="color: white; font-size: 14px; display: flex; justify-content: space-between;">
                     <span>📲 Telegram Integration</span>
                     <span style="color: #00E676;">+ Connected</span>
                 </div>
-                <div style="color: #8C9BB5; font-size: 12px; margin-top: 5px;">Sending Signals automatically</div>
+                <div style="color: #8C9BB5; font-size: 12px; margin-top: 5px;">Alerting at <b>>= {scanner_engine.min_alert_confidence}%</b> Confidence</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Bottom Section: Table Logic
 if not scanner_engine.results_data:
     st.markdown("""
         <div class="dash-card" style="text-align: center; padding: 40px;">
@@ -501,29 +408,25 @@ if not scanner_engine.results_data:
 else:
     df_all = pd.DataFrame(scanner_engine.results_data)
     
-    # Filter out crosses
     df_crosses = df_all[df_all['Signal'].str.contains('CROSS', na=False)]
     df_others = df_all[~df_all['Signal'].str.contains('CROSS', na=False)]
     
-    # Styled dataframe helper function (Ignore URL string formatting)
     def color_rows(val):
         if isinstance(val, str):
             if 'http' in val: return '' 
             if 'CROSS' in val: 
                 return 'background-color: rgba(93, 136, 255, 0.2); color: #FFFFFF; font-weight: bold; border-left: 2px solid #5D88FF;'
+            if 'BLOCKED' in val: return 'color: #FF4B4B; font-weight: bold;'
             if '%' in val:
                 try:
                     num = int(val.replace('%', ''))
-                    return 'color: #00E676; font-weight: bold;' if num >= 70 else 'color: #F7931A; font-weight: bold;' if num >= 60 else 'color: #FF4B4B; font-weight: bold;'
+                    return 'color: #00E676; font-weight: bold;' if num >= 85 else 'color: #F7931A; font-weight: bold;' if num >= 65 else 'color: #FF4B4B; font-weight: bold;'
                 except: pass
             if 'UPTREND' in val: return 'color: #00E676;'
             if 'DOWNTREND' in val: return 'color: #FF4B4B;'
             if 'SIDEWAY' in val: return 'color: #8C9BB5;'
         return ''
 
-    # -----------------------------------------------------------------
-    # UI UPDATE: Configured "Action" column as a clickable LinkColumn
-    # -----------------------------------------------------------------
     link_config = {
         "Action": st.column_config.LinkColumn(
             "Trade / Chart",
@@ -532,22 +435,20 @@ else:
         )
     }
 
-    # 1. Active Cross Over Section
     if not df_crosses.empty:
         st.markdown("""
             <div class="dash-card" style="padding-bottom: 0; border: 1px solid #5D88FF; background: rgba(93, 136, 255, 0.05); margin-bottom: 20px;">
-                <div class="card-title" style="color: #5D88FF; text-shadow: 0 0 10px rgba(93,136,255,0.5);">🚀 ACTIVE CROSSOVERS DETECTED</div>
+                <div class="card-title" style="color: #5D88FF; text-shadow: 0 0 10px rgba(93,136,255,0.5);">🚀 15M MICRO-TRIGGERS DETECTED</div>
             </div>
         """, unsafe_allow_html=True)
         st.dataframe(df_crosses.style.map(color_rows), use_container_width=True, hide_index=True, column_config=link_config)
     else:
         st.markdown("""
             <div class="dash-card" style="padding: 15px; margin-bottom: 20px; border: 1px dashed rgba(41, 56, 102, 0.8);">
-                <div style="color: #8C9BB5; text-align: center; font-size: 14px;">No active crossovers at this moment. Scanning for setups...</div>
+                <div style="color: #8C9BB5; text-align: center; font-size: 14px;">No active 15M micro-triggers at this moment. Waiting for setup...</div>
             </div>
         """, unsafe_allow_html=True)
 
-    # 2. General Market Activity Section
     st.markdown("""
         <div class="dash-card" style="padding-bottom: 0;">
             <div class="card-title">🌐 Live Market Activity <span style="font-size: 12px; font-weight: normal; background: rgba(93,136,255,0.2); padding: 3px 8px; border-radius: 5px; color: #5D88FF;">General Overview</span></div>
