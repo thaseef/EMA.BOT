@@ -12,13 +12,12 @@ import pytz
 # Page Configuration & Styling
 # -----------------------------
 st.set_page_config(
-    page_title="INSTITUTIONAL ALGO V5",
+    page_title="INSTITUTIONAL ALGO V5.2",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS to match the Dark Neon UI
 st.markdown("""
     <style>
     .stApp {
@@ -47,11 +46,9 @@ st.markdown("""
     [data-testid="stDataFrame"] { background: rgba(13, 18, 38, 0.7); border: 1px solid rgba(34, 46, 84, 0.8); border-radius: 16px; padding: 10px; }
     .text-glow-blue { color: #5D88FF; text-shadow: 0 0 10px rgba(93, 136, 255, 0.4); }
     .filter-item { color: #8C9BB5; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(41, 56, 102, 0.3); }
-    
-    /* Style for the Radio Buttons */
     div.row-widget.stRadio > div { flex-direction: column; gap: 10px; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 st_autorefresh(interval=30000, key="datarefresh")
 
@@ -66,7 +63,7 @@ LONG_EMA = 200
 BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 
 # -----------------------------
-# Background Engine with Advanced 1H/15M Scoring
+# Background Engine 
 # -----------------------------
 class BackgroundScanner:
     def __init__(self):
@@ -75,9 +72,7 @@ class BackgroundScanner:
         self.last_update_time = "Booting Master Engine..."
         self.alerted_candles = {}
         
-        # 🚀 NEW: Dynamic variable linked to the dashboard
         self.min_alert_confidence = 85 
-        
         self.is_running = True
 
         thread = threading.Thread(target=self.scan_loop, daemon=True)
@@ -92,8 +87,7 @@ class BackgroundScanner:
             top_pairs = [d['symbol'] for d in pairs[:300]]
             if "BTCUSDT" not in top_pairs: top_pairs.insert(0, "BTCUSDT")
             return top_pairs
-        except:
-            return ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+        except: return ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 
     def calculate_adx(self, df, period=14):
         try:
@@ -167,20 +161,26 @@ class BackgroundScanner:
             else: return "⚪ SIDEWAY"
         except: return "⚪ ERROR"
 
-    def send_telegram(self, coin, signal, conf, trend_1h, rsi_val, rsi_dir, vol, extra_conf):
+    # 🚀 UPDATED Telegram Function for Breakdown & MTF RSI
+    def send_telegram(self, coin, signal, conf, trend_1h, rsi_val, rsi_dir, vol, price, breakdown_str, mtf_rsis):
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID: return
         conf_icon = "🔥" if conf >= 85 else "⚠️" 
         
         message = (
             f"⚡ *ALGO ALERT: {coin}* ⚡\n\n"
             f"**Action:** {signal}\n"
-            f"**Confidence:** {conf_icon} {conf}%\n\n"
+            f"**Current Price:** ${price}\n"
+            f"**Total Score:** {conf_icon} {conf}%\n\n"
+            f"💯 **Score Breakdown:**\n"
+            f"{breakdown_str}\n\n"
             f"📈 **Execution Strategy:**\n"
             f"• 1H Macro Trend: {trend_1h}\n"
-            f"• 15M Trigger: Valid Cross & Price Align\n"
-            f"• 15M RSI: {rsi_val} ({rsi_dir})\n"
-            f"• Volume Spike: {vol}\n"
-            f"• Extra Confluence: {extra_conf}"
+            f"• Volume Status: {vol}\n\n"
+            f"📊 **MTF RSI Radar:**\n"
+            f"• 15M Trigger: {rsi_val} ({rsi_dir})\n"
+            f"• 1H Trend: {mtf_rsis['1h']}\n"
+            f"• 4H Macro: {mtf_rsis['4h']}\n"
+            f"• 1D Daily: {mtf_rsis['1d']}"
         )
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         try: requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}, timeout=5)
@@ -218,18 +218,21 @@ class BackgroundScanner:
                     sig, specific_trend, is_cross = "⚪ Neutral", "⚪ SIDEWAY", False
                     conf = 0
                     vol_status = "-"
+                    breakdown = [] # 🚀 Tracking points awarded
 
                     if curr_e_short > curr_e_long: specific_trend = "🟢 UPTREND"
                     elif curr_e_short < curr_e_long: specific_trend = "🔴 DOWNTREND"
 
-                    if prev_e_short <= prev_e_long and curr_e_short > curr_e_long:
+                    # 🚀 FIX: STRICT INEQUALITIES ONLY (< and >) no equal signs. Eliminates the "Kiss Bug"
+                    if prev_e_short < prev_e_long and curr_e_short > curr_e_long:
                         sig, is_cross = "🚀 15M LONG CROSS", True
-                    elif prev_e_short >= prev_e_long and curr_e_short < curr_e_long:
+                    elif prev_e_short > prev_e_long and curr_e_short < curr_e_long:
                         sig, is_cross = "🔻 15M SHORT CROSS", True
                     else: sig = specific_trend
 
                     if is_cross:
                         conf += 25 
+                        breakdown.append("✅ 15M Strict Cross: +25%")
                         signal_type = "LONG" if "LONG" in sig else "SHORT"
                         
                         trend_1h = self.get_1h_trend(symbol)
@@ -241,9 +244,11 @@ class BackgroundScanner:
                         if signal_type == "LONG" and trend_1h == "UPTREND" and price_above_emas:
                             trend_aligned = True
                             conf += 25 
+                            breakdown.append("✅ 1H Macro Aligned: +25%")
                         elif signal_type == "SHORT" and trend_1h == "DOWNTREND" and price_below_emas:
                             trend_aligned = True
                             conf += 25 
+                            breakdown.append("✅ 1H Macro Aligned: +25%")
                             
                         if not trend_aligned:
                             sig = "🚫 BLOCKED (Counter-Trend)"
@@ -255,8 +260,10 @@ class BackgroundScanner:
                             
                             if signal_type == "LONG" and (55 <= curr_rsi <= 68) and rsi_rising:
                                 conf += 25 
+                                breakdown.append("✅ RSI Momentum Zone: +25%")
                             elif signal_type == "SHORT" and (32 <= curr_rsi <= 45) and not rsi_rising:
                                 conf += 25 
+                                breakdown.append("✅ RSI Momentum Zone: +25%")
                                 
                             closed_vol = df["vol"].iloc[-2]
                             avg_vol_20 = df["vol"].iloc[-22:-2].mean()
@@ -264,6 +271,7 @@ class BackgroundScanner:
                             
                             if "MASSIVE" in vol_status or "SURGE" in vol_status:
                                 conf += 15 
+                                breakdown.append("✅ Volume Spike: +15%")
                                 
                             adx_val = self.calculate_adx(df)
                             bos_status = self.check_bos(df, signal_type)
@@ -271,12 +279,23 @@ class BackgroundScanner:
                             
                             if bos_status or adx_val > 25:
                                 conf += 10 
-                                extra_conf = "Structure/ADX Verified ✅"
+                                extra_conf = "Structure/ADX Verified"
+                                breakdown.append(f"✅ Market Confluence: +10%")
 
-                            # 🚀 NEW: DYNAMIC FINAL DECISION ALGORITHM
                             if conf >= self.min_alert_confidence: 
                                 if self.alerted_candles.get(symbol) != closed_candle_time:
-                                    self.send_telegram(symbol, sig, conf, trend_1h, curr_rsi, rsi_dir_text, vol_status, extra_conf)
+                                    
+                                    # 🚀 Fetch Multi-Timeframe RSI only when executing an alert
+                                    mtf_rsis = {
+                                        "1h": self.fetch_rsi_advanced(symbol, "1h")[0],
+                                        "4h": self.fetch_rsi_advanced(symbol, "4h")[0],
+                                        "1d": self.fetch_rsi_advanced(symbol, "1d")[0]
+                                    }
+                                    
+                                    # Convert array to string format
+                                    breakdown_str = "\n".join(breakdown)
+                                    
+                                    self.send_telegram(symbol, sig, conf, trend_1h, curr_rsi, rsi_dir_text, vol_status, round(price, 6), breakdown_str, mtf_rsis)
                                     self.alerted_candles[symbol] = closed_candle_time
 
                     tv_symbol = symbol.replace("USDT", "USDT")
@@ -304,7 +323,7 @@ scanner_engine = get_scanner()
 st.markdown(f"""
     <div class="top-nav">
         <div class="top-nav-logo">
-            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO V5</span>
+            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO V5.2</span>
         </div>
         <div style="display: flex;">
             <div class="top-nav-item active">🖥 Dashboard</div>
@@ -330,7 +349,7 @@ with col1:
             <div class="card-title">Engine Overview <span style="font-size: 12px; color: #00E676;">● Active</span></div>
             <div class="card-subtitle" style="margin-bottom: 15px;">100-Point Scoring System</div>
             <div class="filter-item">✔️ 1H Trend Alignment (+25%)</div>
-            <div class="filter-item">✔️ 15M EMA 50/200 Trigger (+25%)</div>
+            <div class="filter-item">✔️ 15M Strict 50/200 Trigger (+25%)</div>
             <div class="filter-item">✔️ RSI Sweet Spot & Direction (+25%)</div>
             <div class="filter-item" style="border: none;">✔️ Volume Spike (+15%) & ADX (+10%)</div>
         </div>
@@ -364,27 +383,23 @@ with col2:
     """, unsafe_allow_html=True)
 
 with col3:
-    # We create the outer card container
     st.markdown("""
         <div class="dash-card">
             <div class="card-title">Notification Settings <span style="font-size: 12px; color: #5D88FF;">⚙️ Config</span></div>
             <div class="card-subtitle" style="margin-bottom: 15px;">Target: Telegram Push Alerts</div>
     """, unsafe_allow_html=True)
 
-    # 🚀 NEW: The Interactive Dashboard Radio Buttons
     alert_threshold = st.radio(
         "Set Minimum Telegram Trigger Level:",
         ("85% (Strict / High Confirmation)", "65% (Aggressive / Medium Confirmation)"),
         label_visibility="collapsed"
     )
 
-    # Automatically update the background thread based on user click
     if "85" in alert_threshold:
         scanner_engine.min_alert_confidence = 85
     else:
         scanner_engine.min_alert_confidence = 65
 
-    # Display the current active status beautifully
     st.markdown(f"""
             <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 3px solid #00E676;">
                 <div style="color: white; font-size: 14px; display: flex; justify-content: space-between;">
