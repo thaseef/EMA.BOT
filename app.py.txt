@@ -7,12 +7,13 @@ import threading
 import time
 from datetime import datetime, time as dt_time
 import pytz
+import concurrent.futures  # 🚀 NEW: Parallel Processing Engine
 
 # -----------------------------
 # Page Configuration & Styling
 # -----------------------------
 st.set_page_config(
-    page_title="INSTITUTIONAL ALGO V5.2",
+    page_title="INSTITUTIONAL ALGO V5.3",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -69,7 +70,7 @@ class BackgroundScanner:
     def __init__(self):
         self.results_data = []
         self.btc_mtfa = {"Price": "$0.00", "15m": "⚪ Scanning", "1H": "⚪ Scanning", "4H": "⚪ Scanning", "1D": "⚪ Scanning"}
-        self.last_update_time = "Booting Master Engine..."
+        self.last_update_time = "Booting Parallel Engine..."
         self.alerted_candles = {}
         
         self.min_alert_confidence = 85 
@@ -161,36 +162,146 @@ class BackgroundScanner:
             else: return "⚪ SIDEWAY"
         except: return "⚪ ERROR"
 
-    # 🚀 UPDATED Telegram Function for Breakdown & MTF RSI
+    # 🚀 NEW: Asynchronous "Fire and Forget" Telegram Sender
     def send_telegram(self, coin, signal, conf, trend_1h, rsi_val, rsi_dir, vol, price, breakdown_str, mtf_rsis):
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID: return
-        conf_icon = "🔥" if conf >= 85 else "⚠️" 
         
-        message = (
-            f"⚡ *ALGO ALERT: {coin}* ⚡\n\n"
-            f"**Action:** {signal}\n"
-            f"**Current Price:** ${price}\n"
-            f"**Total Score:** {conf_icon} {conf}%\n\n"
-            f"💯 **Score Breakdown:**\n"
-            f"{breakdown_str}\n\n"
-            f"📈 **Execution Strategy:**\n"
-            f"• 1H Macro Trend: {trend_1h}\n"
-            f"• Volume Status: {vol}\n\n"
-            f"📊 **MTF RSI Radar:**\n"
-            f"• 15M Trigger: {rsi_val} ({rsi_dir})\n"
-            f"• 1H Trend: {mtf_rsis['1h']}\n"
-            f"• 4H Macro: {mtf_rsis['4h']}\n"
-            f"• 1D Daily: {mtf_rsis['1d']}"
-        )
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        try: requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}, timeout=5)
-        except: pass
+        def _send():
+            conf_icon = "🔥" if conf >= 85 else "⚠️" 
+            message = (
+                f"⚡ *ALGO ALERT: {coin}* ⚡\n\n"
+                f"**Action:** {signal}\n"
+                f"**Current Price:** ${price}\n"
+                f"**Total Score:** {conf_icon} {conf}%\n\n"
+                f"💯 **Score Breakdown:**\n"
+                f"{breakdown_str}\n\n"
+                f"📈 **Execution Strategy:**\n"
+                f"• 1H Macro Trend: {trend_1h}\n"
+                f"• Volume Status: {vol}\n\n"
+                f"📊 **MTF RSI Radar:**\n"
+                f"• 15M Trigger: {rsi_val} ({rsi_dir})\n"
+                f"• 1H Trend: {mtf_rsis['1h']}\n"
+                f"• 4H Macro: {mtf_rsis['4h']}\n"
+                f"• 1D Daily: {mtf_rsis['1d']}"
+            )
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            try: requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}, timeout=5)
+            except: pass
+            
+        # Fire the message in a background thread so the scanner doesn't wait
+        threading.Thread(target=_send, daemon=True).start()
+
+    # 🚀 NEW: Isolated Single Coin Processor for Parallelization
+    def process_coin(self, symbol):
+        try:
+            params = {"symbol": symbol, "interval": "15m", "limit": 250}
+            resp = requests.get(BASE_URL, params=params, timeout=5).json()
+            df = pd.DataFrame(resp, columns=["open_time", "open", "high", "low", "close", "vol", "close_time", "qav", "not", "tbbv", "tbqv", "ig"])
+            df[["open", "high", "low", "close", "vol"]] = df[["open", "high", "low", "close", "vol"]].astype(float)
+
+            ema_short = df["close"].ewm(span=SHORT_EMA, adjust=False).mean()
+            ema_long = df["close"].ewm(span=LONG_EMA, adjust=False).mean()
+            prev_e_short, prev_e_long = ema_short.iloc[-3], ema_long.iloc[-3]
+            curr_e_short, curr_e_long = ema_short.iloc[-2], ema_long.iloc[-2]
+
+            price = df["close"].iloc[-1]
+            closed_candle_time = df["close_time"].iloc[-2]
+
+            sig, specific_trend, is_cross = "⚪ Neutral", "⚪ SIDEWAY", False
+            conf = 0
+            vol_status = "-"
+            breakdown = []
+
+            if curr_e_short > curr_e_long: specific_trend = "🟢 UPTREND"
+            elif curr_e_short < curr_e_long: specific_trend = "🔴 DOWNTREND"
+
+            if prev_e_short < prev_e_long and curr_e_short > curr_e_long:
+                sig, is_cross = "🚀 15M LONG CROSS", True
+            elif prev_e_short > prev_e_long and curr_e_short < curr_e_long:
+                sig, is_cross = "🔻 15M SHORT CROSS", True
+            else: sig = specific_trend
+
+            if is_cross:
+                conf += 25 
+                breakdown.append("✅ 15M Strict Cross: +25%")
+                signal_type = "LONG" if "LONG" in sig else "SHORT"
+                
+                trend_1h = self.get_1h_trend(symbol)
+                
+                price_above_emas = (price > curr_e_short) and (price > curr_e_long)
+                price_below_emas = (price < curr_e_short) and (price < curr_e_long)
+                
+                trend_aligned = False
+                if signal_type == "LONG" and trend_1h == "UPTREND" and price_above_emas:
+                    trend_aligned = True
+                    conf += 25 
+                    breakdown.append("✅ 1H Macro Aligned: +25%")
+                elif signal_type == "SHORT" and trend_1h == "DOWNTREND" and price_below_emas:
+                    trend_aligned = True
+                    conf += 25 
+                    breakdown.append("✅ 1H Macro Aligned: +25%")
+                    
+                if not trend_aligned:
+                    sig = "🚫 BLOCKED (Counter-Trend)"
+                    conf = 0 
+                else:
+                    curr_rsi, prev_rsi = self.fetch_rsi_advanced(symbol, "15m")
+                    rsi_rising = curr_rsi > prev_rsi
+                    rsi_dir_text = "Rising 📈" if rsi_rising else "Falling 📉"
+                    
+                    if signal_type == "LONG" and (55 <= curr_rsi <= 68) and rsi_rising:
+                        conf += 25 
+                        breakdown.append("✅ RSI Momentum Zone: +25%")
+                    elif signal_type == "SHORT" and (32 <= curr_rsi <= 45) and not rsi_rising:
+                        conf += 25 
+                        breakdown.append("✅ RSI Momentum Zone: +25%")
+                        
+                    closed_vol = df["vol"].iloc[-2]
+                    avg_vol_20 = df["vol"].iloc[-22:-2].mean()
+                    vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
+                    
+                    if "MASSIVE" in vol_status or "SURGE" in vol_status:
+                        conf += 15 
+                        breakdown.append("✅ Volume Spike: +15%")
+                        
+                    adx_val = self.calculate_adx(df)
+                    bos_status = self.check_bos(df, signal_type)
+                    extra_conf = "None"
+                    
+                    if bos_status or adx_val > 25:
+                        conf += 10 
+                        extra_conf = "Structure/ADX Verified"
+                        breakdown.append(f"✅ Market Confluence: +10%")
+
+                    if conf >= self.min_alert_confidence: 
+                        if self.alerted_candles.get(symbol) != closed_candle_time:
+                            mtf_rsis = {
+                                "1h": self.fetch_rsi_advanced(symbol, "1h")[0],
+                                "4h": self.fetch_rsi_advanced(symbol, "4h")[0],
+                                "1d": self.fetch_rsi_advanced(symbol, "1d")[0]
+                            }
+                            breakdown_str = "\n".join(breakdown)
+                            
+                            self.send_telegram(symbol, sig, conf, trend_1h, curr_rsi, rsi_dir_text, vol_status, round(price, 6), breakdown_str, mtf_rsis)
+                            self.alerted_candles[symbol] = closed_candle_time
+
+            tv_symbol = symbol.replace("USDT", "USDT")
+            return {
+                "Asset": symbol, 
+                "Signal": sig, 
+                "Conf": f"{conf}%" if is_cross else "-",
+                "Price": f"${round(price, 6)}",
+                "Action": f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
+            }
+        except:
+            return None
 
     def scan_loop(self):
         while self.is_running:
             coins = self.get_top_usdt_pairs()
             new_results = []
 
+            # Refresh BTC Macro status
             try:
                 price_resp = requests.get("https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT", timeout=5).json()
                 self.btc_mtfa["Price"] = f"${round(float(price_resp['price']), 2):,}"
@@ -200,114 +311,20 @@ class BackgroundScanner:
                 self.btc_mtfa["1D"] = self.get_btc_trend("1d")
             except: pass
 
-            for symbol in coins:
-                try:
-                    params = {"symbol": symbol, "interval": "15m", "limit": 250}
-                    resp = requests.get(BASE_URL, params=params, timeout=5).json()
-                    df = pd.DataFrame(resp, columns=["open_time", "open", "high", "low", "close", "vol", "close_time", "qav", "not", "tbbv", "tbqv", "ig"])
-                    df[["open", "high", "low", "close", "vol"]] = df[["open", "high", "low", "close", "vol"]].astype(float)
+            # 🚀 NEW: Parallel Processing ThreadPool (Fast Scanning)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+                # Submit all 300 coins to the worker pool at once
+                futures = [executor.submit(self.process_coin, symbol) for symbol in coins]
+                
+                # Gather the results as they finish instantly
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result is not None:
+                        new_results.append(result)
 
-                    ema_short = df["close"].ewm(span=SHORT_EMA, adjust=False).mean()
-                    ema_long = df["close"].ewm(span=LONG_EMA, adjust=False).mean()
-                    prev_e_short, prev_e_long = ema_short.iloc[-3], ema_long.iloc[-3]
-                    curr_e_short, curr_e_long = ema_short.iloc[-2], ema_long.iloc[-2]
-
-                    price = df["close"].iloc[-1]
-                    closed_candle_time = df["close_time"].iloc[-2]
-
-                    sig, specific_trend, is_cross = "⚪ Neutral", "⚪ SIDEWAY", False
-                    conf = 0
-                    vol_status = "-"
-                    breakdown = [] # 🚀 Tracking points awarded
-
-                    if curr_e_short > curr_e_long: specific_trend = "🟢 UPTREND"
-                    elif curr_e_short < curr_e_long: specific_trend = "🔴 DOWNTREND"
-
-                    # 🚀 FIX: STRICT INEQUALITIES ONLY (< and >) no equal signs. Eliminates the "Kiss Bug"
-                    if prev_e_short < prev_e_long and curr_e_short > curr_e_long:
-                        sig, is_cross = "🚀 15M LONG CROSS", True
-                    elif prev_e_short > prev_e_long and curr_e_short < curr_e_long:
-                        sig, is_cross = "🔻 15M SHORT CROSS", True
-                    else: sig = specific_trend
-
-                    if is_cross:
-                        conf += 25 
-                        breakdown.append("✅ 15M Strict Cross: +25%")
-                        signal_type = "LONG" if "LONG" in sig else "SHORT"
-                        
-                        trend_1h = self.get_1h_trend(symbol)
-                        
-                        price_above_emas = (price > curr_e_short) and (price > curr_e_long)
-                        price_below_emas = (price < curr_e_short) and (price < curr_e_long)
-                        
-                        trend_aligned = False
-                        if signal_type == "LONG" and trend_1h == "UPTREND" and price_above_emas:
-                            trend_aligned = True
-                            conf += 25 
-                            breakdown.append("✅ 1H Macro Aligned: +25%")
-                        elif signal_type == "SHORT" and trend_1h == "DOWNTREND" and price_below_emas:
-                            trend_aligned = True
-                            conf += 25 
-                            breakdown.append("✅ 1H Macro Aligned: +25%")
-                            
-                        if not trend_aligned:
-                            sig = "🚫 BLOCKED (Counter-Trend)"
-                            conf = 0 
-                        else:
-                            curr_rsi, prev_rsi = self.fetch_rsi_advanced(symbol, "15m")
-                            rsi_rising = curr_rsi > prev_rsi
-                            rsi_dir_text = "Rising 📈" if rsi_rising else "Falling 📉"
-                            
-                            if signal_type == "LONG" and (55 <= curr_rsi <= 68) and rsi_rising:
-                                conf += 25 
-                                breakdown.append("✅ RSI Momentum Zone: +25%")
-                            elif signal_type == "SHORT" and (32 <= curr_rsi <= 45) and not rsi_rising:
-                                conf += 25 
-                                breakdown.append("✅ RSI Momentum Zone: +25%")
-                                
-                            closed_vol = df["vol"].iloc[-2]
-                            avg_vol_20 = df["vol"].iloc[-22:-2].mean()
-                            vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
-                            
-                            if "MASSIVE" in vol_status or "SURGE" in vol_status:
-                                conf += 15 
-                                breakdown.append("✅ Volume Spike: +15%")
-                                
-                            adx_val = self.calculate_adx(df)
-                            bos_status = self.check_bos(df, signal_type)
-                            extra_conf = "None"
-                            
-                            if bos_status or adx_val > 25:
-                                conf += 10 
-                                extra_conf = "Structure/ADX Verified"
-                                breakdown.append(f"✅ Market Confluence: +10%")
-
-                            if conf >= self.min_alert_confidence: 
-                                if self.alerted_candles.get(symbol) != closed_candle_time:
-                                    
-                                    # 🚀 Fetch Multi-Timeframe RSI only when executing an alert
-                                    mtf_rsis = {
-                                        "1h": self.fetch_rsi_advanced(symbol, "1h")[0],
-                                        "4h": self.fetch_rsi_advanced(symbol, "4h")[0],
-                                        "1d": self.fetch_rsi_advanced(symbol, "1d")[0]
-                                    }
-                                    
-                                    # Convert array to string format
-                                    breakdown_str = "\n".join(breakdown)
-                                    
-                                    self.send_telegram(symbol, sig, conf, trend_1h, curr_rsi, rsi_dir_text, vol_status, round(price, 6), breakdown_str, mtf_rsis)
-                                    self.alerted_candles[symbol] = closed_candle_time
-
-                    tv_symbol = symbol.replace("USDT", "USDT")
-                    new_results.append({
-                        "Asset": symbol, 
-                        "Signal": sig, 
-                        "Conf": f"{conf}%" if is_cross else "-",
-                        "Price": f"${round(price, 6)}",
-                        "Action": f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
-                    })
-                except: pass
-
+            # Sort results alphabetically to keep dashboard clean
+            new_results = sorted(new_results, key=lambda x: x['Asset'])
+            
             self.results_data = new_results
             sl_timezone = pytz.timezone('Asia/Colombo')
             self.last_update_time = datetime.now(sl_timezone).strftime("%I:%M:%S %p")
@@ -323,7 +340,7 @@ scanner_engine = get_scanner()
 st.markdown(f"""
     <div class="top-nav">
         <div class="top-nav-logo">
-            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO V5.2</span>
+            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO V5.3</span>
         </div>
         <div style="display: flex;">
             <div class="top-nav-item active">🖥 Dashboard</div>
@@ -331,7 +348,7 @@ st.markdown(f"""
             <div class="top-nav-item">⚙️ Settings</div>
         </div>
         <div style="color: #8C9BB5; font-size: 13px;">
-            🔴 Live Server: {scanner_engine.last_update_time}
+            🔴 Live Server: {scanner_engine.last_update_time} (Ultra-Low Latency)
         </div>
     </div>
 """, unsafe_allow_html=True)
