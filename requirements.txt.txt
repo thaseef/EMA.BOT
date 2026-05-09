@@ -1,6 +1,8 @@
 streamlit
-pandas
-numpy
-requests
 streamlit-autorefresh
 pytz
+requests
+pandas
+numpy
+pyngrok
+feedparser
