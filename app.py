@@ -6,7 +6,7 @@ import requests
 from streamlit_autorefresh import st_autorefresh
 import threading
 import time
-from datetime import datetime, time as dt_time
+from datetime import datetime
 import pytz
 import concurrent.futures
 import os
@@ -17,8 +17,8 @@ import re
 # Page Configuration & Styling
 # -----------------------------
 st.set_page_config(
-    page_title="INSTITUTIONAL ALGO V6.0",
-    page_icon="⚡",
+    page_title="INSTITUTIONAL ALGO V6.0 — 200 ASSET MATRIX",
+    page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -56,32 +56,17 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #8C9BB5; }
     .stTabs [aria-selected="true"] { color: #FFFFFF !important; background-color: rgba(93, 136, 255, 0.15) !important; border-radius: 8px; }
     
-    /* SCROLLING TICKER CSS */
     .ticker-wrap {
-        width: 100%;
-        overflow: hidden;
-        background-color: rgba(5, 7, 20, 0.8);
-        border: 1px solid rgba(93, 136, 255, 0.3);
-        padding: 8px 0;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        width: 100%; overflow: hidden; background-color: rgba(5, 7, 20, 0.8);
+        border: 1px solid rgba(93, 136, 255, 0.3); padding: 8px 0; border-radius: 8px;
+        margin-bottom: 20px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
     }
     .ticker {
-        display: inline-block;
-        white-space: nowrap;
-        animation: ticker 100s linear infinite; 
-        color: #E0E6ED;
-        font-size: 14px;
-        font-weight: 500;
+        display: inline-block; white-space: nowrap; animation: ticker 100s linear infinite; 
+        color: #E0E6ED; font-size: 14px; font-weight: 500;
     }
-    .ticker:hover {
-        animation-play-state: paused; 
-    }
-    @keyframes ticker {
-        0% { transform: translate3d(100%, 0, 0); }
-        100% { transform: translate3d(-100%, 0, 0); }
-    }
+    .ticker:hover { animation-play-state: paused; }
+    @keyframes ticker { 0% { transform: translate3d(100%, 0, 0); } 100% { transform: translate3d(-100%, 0, 0); } }
     .ticker-item { margin-right: 50px; }
     .ticker-highlight { color: #FF4B4B; font-weight: bold; margin-right: 5px; } 
     </style>
@@ -89,11 +74,8 @@ st.markdown("""
 
 st_autorefresh(interval=30000, key="datarefresh")
 
-# -----------------------------
-# Configuration Variables
-# -----------------------------
-TELEGRAM_TOKEN = "8761349419:AAHbMQy2eCqQ9RjgSP99KXY-8fVJ0caVf7Y"
-TELEGRAM_CHAT_ID = "7999641132"
+TELEGRAM_TOKEN = os.getenv("8761349419:AAHbMQy2eCqQ9RjgSP99KXY-8fVJ0caVf7Y")
+TELEGRAM_CHAT_ID = os.getenv("7999641132")
 
 SHORT_EMA = 50
 LONG_EMA = 200
@@ -101,7 +83,7 @@ BASE_URL = "https://data-api.binance.vision/api/v3/klines"
 HISTORY_FILE = "algo_history.csv"
 
 # -----------------------------
-# US Macro / Geopolitical News Fetcher
+# US Macro News Ticker Fetcher
 # -----------------------------
 @st.cache_data(ttl=300) 
 def get_live_news():
@@ -115,34 +97,30 @@ def get_live_news():
 
 def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
-    cleantext = re.sub(cleanr, '', raw_html)
-    cleantext = cleantext.replace("Google News", "")
-    return cleantext
+    return re.sub(cleanr, '', raw_html).replace("Google News", "")
 
 def get_image_url(entry):
     if 'media_content' in entry and len(entry.media_content) > 0:
         return entry.media_content[0]['url']
     if 'summary' in entry:
         img_match = re.search(r'<img[^>]+src="([^">]+)"', entry.summary)
-        if img_match:
-            return img_match.group(1)
+        if img_match: return img_match.group(1)
     return ""
 
 # -----------------------------
-# Background Engine 
+# Background Scanner Engine
 # -----------------------------
 class BackgroundScanner:
     def __init__(self):
         self.results_data = []
-        self.btc_mtfa = {"Price": "$0.00", "15m": "⚪ Scanning", "1H": "⚪ Scanning", "4H": "⚪ Scanning", "1D": "⚪ Scanning"}
-        self.last_update_time = "Booting V6 Master Engine..."
+        # Standardized tracking keys to uppercase "15M"
+        self.btc_mtfa = {"Price": "$0.00", "15M": "⚪ Scanning", "1H": "⚪ Scanning", "4H": "⚪ Scanning", "1D": "⚪ Scanning"}
+        self.last_update_time = "Initializing 15M Framework..."
         self.alerted_candles = {}
-        
-        self.min_alert_confidence = 85 
         self.is_running = True
         
         if not os.path.exists(HISTORY_FILE):
-            pd.DataFrame(columns=["Time_Triggered", "Asset", "Signal", "Confidence", "Price", "1H_Trend"]).to_csv(HISTORY_FILE, index=False)
+            pd.DataFrame(columns=["Time_Triggered", "Asset", "Signal", "Status", "Price", "Macro_Trend"]).to_csv(HISTORY_FILE, index=False)
 
         thread = threading.Thread(target=self.scan_loop, daemon=True)
         thread.start()
@@ -153,60 +131,12 @@ class BackgroundScanner:
             response = requests.get(url, timeout=10).json()
             pairs = [d for d in response if d['symbol'].endswith('USDT')]
             pairs.sort(key=lambda x: float(x['quoteVolume']), reverse=True)
-            top_pairs = [d['symbol'] for d in pairs[:100]] 
+            top_pairs = [d['symbol'] for d in pairs[:200]] 
             if "BTCUSDT" not in top_pairs: top_pairs.insert(0, "BTCUSDT")
             return top_pairs
         except: return ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 
-    def calculate_adx(self, df, period=14):
-        try:
-            df = df.copy()
-            df['H-L'] = df['high'] - df['low']
-            df['H-Cp'] = abs(df['high'] - df['close'].shift(1))
-            df['L-Cp'] = abs(df['low'] - df['close'].shift(1))
-            df['TR'] = df[['H-L', 'H-Cp', 'L-Cp']].max(axis=1)
-
-            df['+DM'] = np.where((df['high'] - df['high'].shift(1)) > (df['low'].shift(1) - df['low']), 
-                                 np.where((df['high'] - df['high'].shift(1)) > 0, df['high'] - df['high'].shift(1), 0), 0)
-            df['-DM'] = np.where((df['low'].shift(1) - df['low']) > (df['high'] - df['high'].shift(1)), 
-                                 np.where((df['low'].shift(1) - df['low']) > 0, df['low'].shift(1) - df['low'], 0), 0)
-
-            df['TR_smooth'] = df['TR'].rolling(window=period).sum()
-            df['+DM_smooth'] = df['+DM'].rolling(window=period).sum()
-            df['-DM_smooth'] = df['-DM'].rolling(window=period).sum()
-
-            df['+DI'] = 100 * (df['+DM_smooth'] / df['TR_smooth'])
-            df['-DI'] = 100 * (df['-DM_smooth'] / df['TR_smooth'])
-            df['DX'] = 100 * abs(df['+DI'] - df['-DI']) / (df['+DI'] + df['-DI'])
-            df['ADX'] = df['DX'].rolling(window=period).mean()
-            return round(df['ADX'].iloc[-1], 2)
-        except: return 0
-
-    def check_bos(self, df, signal_type):
-        try:
-            lookback = df.iloc[-22:-2] 
-            if signal_type == "LONG":
-                recent_high = lookback['high'].max()
-                return df['close'].iloc[-1] > recent_high
-            else:
-                recent_low = lookback['low'].min()
-                return df['close'].iloc[-1] < recent_low
-        except: return False
-
-    def fetch_rsi_advanced(self, symbol, interval):
-        try:
-            params = {"symbol": symbol, "interval": interval, "limit": 100}
-            resp = requests.get(BASE_URL, params=params, timeout=5).json()
-            close_prices = pd.Series([float(x[4]) for x in resp])
-            delta = close_prices.diff()
-            up = delta.clip(lower=0)
-            down = -1 * delta.clip(upper=0)
-            rs = up.ewm(com=13, adjust=False).mean() / down.ewm(com=13, adjust=False).mean()
-            rsi = 100 - (100 / (1 + rs))
-            return round(rsi.iloc[-1], 2), round(rsi.iloc[-2], 2)
-        except: return 50.0, 50.0
-
-    def get_1h_trend(self, symbol):
+    def get_macro_trend_1h(self, symbol):
         try:
             params = {"symbol": symbol, "interval": "1h", "limit": 250}
             resp = requests.get(BASE_URL, params=params, timeout=5).json()
@@ -230,26 +160,18 @@ class BackgroundScanner:
             else: return "⚪ SIDEWAY"
         except: return "⚪ ERROR"
 
-    def send_telegram(self, coin, signal, conf, trend_1h, rsi_val, rsi_dir, vol, price, breakdown_str, mtf_rsis):
+    def send_telegram(self, coin, signal, trend_macro, vol, price):
         if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID: return
         
         def _send():
-            conf_icon = "🔥" if conf >= 85 else "⚠️" 
             message = (
-                f"⚡ *V6 ALGO ALERT: {coin}* ⚡\n\n"
+                f"🏛️ *15M BULLISH CROSSOVER DETECTED* 🏛️\n\n"
+                f"**Asset:** {coin}\n"
                 f"**Action:** {signal}\n"
-                f"**Current Price:** ${price}\n"
-                f"**Total Score:** {conf_icon} {conf}%\n\n"
-                f"💯 **Score Breakdown:**\n"
-                f"{breakdown_str}\n\n"
-                f"📈 **Execution Strategy:**\n"
-                f"• 1H Macro Trend: {trend_1h}\n"
-                f"• Volume Status: {vol}\n\n"
-                f"📊 **MTF RSI Radar:**\n"
-                f"• 15M Trigger: {rsi_val} ({rsi_dir})\n"
-                f"• 1H Trend: {mtf_rsis['1h']}\n"
-                f"• 4H Macro: {mtf_rsis['4h']}\n"
-                f"• 1D Daily: {mtf_rsis['1d']}"
+                f"**Execution Price:** ${price}\n\n"
+                f"📈 **Trend Filters:**\n"
+                f"• 1H Macro Filter: {trend_macro}\n"
+                f"• Volume Status: {vol}\n"
             )
             url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
             try: requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}, timeout=5)
@@ -257,7 +179,7 @@ class BackgroundScanner:
             
         threading.Thread(target=_send, daemon=True).start()
 
-    def process_coin(self, symbol, current_btc_4h, rank):
+    def process_coin(self, symbol, current_btc_1d, rank):
         try:
             params = {"symbol": symbol, "interval": "15m", "limit": 250}
             resp = requests.get(BASE_URL, params=params, timeout=5).json()
@@ -266,6 +188,7 @@ class BackgroundScanner:
 
             ema_short = df["close"].ewm(span=SHORT_EMA, adjust=False).mean()
             ema_long = df["close"].ewm(span=LONG_EMA, adjust=False).mean()
+            
             prev_e_short, prev_e_long = ema_short.iloc[-3], ema_long.iloc[-3]
             curr_e_short, curr_e_long = ema_short.iloc[-2], ema_long.iloc[-2]
 
@@ -273,125 +196,54 @@ class BackgroundScanner:
             closed_candle_time = df["close_time"].iloc[-2]
 
             sig, specific_trend, is_cross = "⚪ Neutral", "⚪ SIDEWAY", False
-            conf = 0
-            vol_status = "-"
-            breakdown = []
 
             if curr_e_short > curr_e_long: specific_trend = "🟢 UPTREND"
             elif curr_e_short < curr_e_long: specific_trend = "🔴 DOWNTREND"
 
             if prev_e_short < prev_e_long and curr_e_short > curr_e_long:
-                sig = "🚀 ⭐ TOP 40 LONG CROSS" if rank <= 40 else "🚀 15M LONG CROSS"
+                sig = "🚀 ⭐ TOP 40 15M CROSS" if rank <= 40 else "🚀 15M BULLISH CROSS"
                 is_cross = True
             elif prev_e_short > prev_e_long and curr_e_short < curr_e_long:
-                sig = "🔻 ⭐ TOP 40 SHORT CROSS" if rank <= 40 else "🔻 15M SHORT CROSS"
-                is_cross = True
-            else: sig = specific_trend
+                return None
+            else: 
+                sig = specific_trend
 
             if is_cross:
-                signal_type = "LONG" if "LONG" in sig else "SHORT"
-                
-                if signal_type == "LONG" and "DOWN" in current_btc_4h:
-                    return {"Asset": symbol, "Signal": "🚫 BLOCKED (BTC Bearish)", "Conf": "-", "Price": f"${round(price, 6)}", "Action": "-"}
-                elif signal_type == "SHORT" and "UP" in current_btc_4h:
-                    return {"Asset": symbol, "Signal": "🚫 BLOCKED (BTC Bullish)", "Conf": "-", "Price": f"${round(price, 6)}", "Action": "-"}
+                if "DOWN" in current_btc_1d:
+                    return {"Asset": symbol, "Signal": "🚫 BLOCKED (BTC Daily Bearish)", "Status": "FILTERED", "Price": f"${round(price, 6)}", "Action": "-"}
 
-                extension = (abs(price - curr_e_short) / curr_e_short) * 100
-                if extension > 2.0:
-                    return {"Asset": symbol, "Signal": f"🚫 BLOCKED (Overextended {extension:.1f}%)", "Conf": "-", "Price": f"${round(price, 6)}", "Action": "-"}
-
-                conf += 25 
-                breakdown.append("✅ 15M Strict Cross: +25%")
-                
-                trend_1h = self.get_1h_trend(symbol)
-                
+                trend_macro = self.get_macro_trend_1h(symbol)
                 price_above_emas = (price > curr_e_short) and (price > curr_e_long)
-                price_below_emas = (price < curr_e_short) and (price < curr_e_long)
                 
-                trend_aligned = False
-                if signal_type == "LONG" and trend_1h == "UPTREND" and price_above_emas:
-                    trend_aligned = True
-                    conf += 20 
-                    breakdown.append("✅ 1H Macro Aligned: +20%")
-                elif signal_type == "SHORT" and trend_1h == "DOWNTREND" and price_below_emas:
-                    trend_aligned = True
-                    conf += 20 
-                    breakdown.append("✅ 1H Macro Aligned: +20%")
-                    
-                if not trend_aligned:
-                    return {"Asset": symbol, "Signal": "🚫 BLOCKED (Counter-Trend)", "Conf": "-", "Price": f"${round(price, 6)}", "Action": "-"}
-
-                curr_rsi, prev_rsi = self.fetch_rsi_advanced(symbol, "15m")
-                rsi_rising = curr_rsi > prev_rsi
-                rsi_dir_text = "Rising 📈" if rsi_rising else "Falling 📉"
-                
-                if signal_type == "LONG" and (55 <= curr_rsi <= 68) and rsi_rising:
-                    conf += 20 
-                    breakdown.append("✅ RSI Momentum Zone: +20%")
-                elif signal_type == "SHORT" and (32 <= curr_rsi <= 45) and not rsi_rising:
-                    conf += 20 
-                    breakdown.append("✅ RSI Momentum Zone: +20%")
+                if not (trend_macro == "UPTREND" and price_above_emas):
+                    return {"Asset": symbol, "Signal": "🚫 BLOCKED (Macro Counter-Trend)", "Status": "FILTERED", "Price": f"${round(price, 6)}", "Action": "-"}
 
                 closed_vol = df["vol"].iloc[-2]
                 avg_vol_20 = df["vol"].iloc[-22:-2].mean()
                 vol_status = "🌋 2X MASSIVE" if closed_vol > (avg_vol_20 * 2.0) else "🔥 1.5X SURGE" if closed_vol > (avg_vol_20 * 1.5) else "🧊 Low Volume" if closed_vol < (avg_vol_20 * 0.5) else "⚪ Normal"
                 
-                if "MASSIVE" in vol_status or "SURGE" in vol_status:
-                    conf += 15 
-                    breakdown.append("✅ Volume Spike: +15%")
-
-                lookback_close = df['close'].iloc[-22:-2]
-                sma20 = lookback_close.mean()
-                std20 = lookback_close.std()
-                bb_width = (((sma20 + (2 * std20)) - (sma20 - (2 * std20))) / sma20) * 100
-                if bb_width < 3.0: 
-                    conf += 10
-                    breakdown.append("✅ BB Squeeze Release: +10%")
-
-                adx_val = self.calculate_adx(df)
-                bos_status = self.check_bos(df, signal_type)
-                
-                is_retest = False
-                if signal_type == "LONG" and df['low'].iloc[-2] <= (curr_e_short * 1.002): is_retest = True
-                elif signal_type == "SHORT" and df['high'].iloc[-2] >= (curr_e_short * 0.998): is_retest = True
-                
-                if is_retest or bos_status or adx_val > 25:
-                    conf += 10 
-                    breakdown.append("✅ Retest/Confluence: +10%")
-
-                conf = min(100, conf) 
-                
-                if conf >= self.min_alert_confidence: 
-                    if self.alerted_candles.get(symbol) != closed_candle_time:
-                        
-                        sl_tz = pytz.timezone('Asia/Colombo')
-                        time_triggered = datetime.now(sl_tz).strftime("%Y-%m-%d %I:%M:%S %p")
-                        
-                        new_history_row = pd.DataFrame([{
-                            "Time_Triggered": time_triggered,
-                            "Asset": symbol,
-                            "Signal": sig,
-                            "Confidence": f"{conf}%",
-                            "Price": f"${round(price, 6)}",
-                            "1H_Trend": trend_1h
-                        }])
-                        new_history_row.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
-                        
-                        mtf_rsis = {
-                            "1h": self.fetch_rsi_advanced(symbol, "1h")[0],
-                            "4h": self.fetch_rsi_advanced(symbol, "4h")[0],
-                            "1d": self.fetch_rsi_advanced(symbol, "1d")[0]
-                        }
-                        breakdown_str = "\n".join(breakdown)
-                        self.send_telegram(symbol, sig, conf, trend_1h, curr_rsi, rsi_dir_text, vol_status, round(price, 6), breakdown_str, mtf_rsis)
-                        
-                        self.alerted_candles[symbol] = closed_candle_time
+                if self.alerted_candles.get(symbol) != closed_candle_time:
+                    sl_tz = pytz.timezone('Asia/Colombo')
+                    time_triggered = datetime.now(sl_tz).strftime("%Y-%m-%d %I:%M:%S %p")
+                    
+                    new_history_row = pd.DataFrame([{
+                        "Time_Triggered": time_triggered,
+                        "Asset": symbol,
+                        "Signal": sig,
+                        "Status": "TRIGGERED",
+                        "Price": f"${round(price, 6)}",
+                        "Macro_Trend": trend_macro
+                    }])
+                    new_history_row.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+                    
+                    self.send_telegram(symbol, sig, trend_macro, vol_status, round(price, 6))
+                    self.alerted_candles[symbol] = closed_candle_time
 
             tv_symbol = symbol.replace("USDT", "USDT")
             return {
                 "Asset": symbol, 
                 "Signal": sig, 
-                "Conf": f"{conf}%" if is_cross else "-",
+                "Status": "VALIDATED" if is_cross else "TRACKING",
                 "Price": f"${round(price, 6)}",
                 "Action": f"https://www.tradingview.com/chart/?symbol=BINANCE:{tv_symbol}"
             }
@@ -400,78 +252,67 @@ class BackgroundScanner:
 
     def scan_loop(self):
         while self.is_running:
-            coins = self.get_top_usdt_pairs()
-            new_results = []
-
             try:
                 price_resp = requests.get("https://data-api.binance.vision/api/v3/ticker/price?symbol=BTCUSDT", timeout=5).json()
                 self.btc_mtfa["Price"] = f"${round(float(price_resp['price']), 2):,}"
-                self.btc_mtfa["15m"] = self.get_btc_trend("15m")
+                # Uniform uppercase assignment to match the UI block expectations
+                self.btc_mtfa["15M"] = self.get_btc_trend("15m")
                 self.btc_mtfa["1H"] = self.get_btc_trend("1h")
                 self.btc_mtfa["4H"] = self.get_btc_trend("4h")
                 self.btc_mtfa["1D"] = self.get_btc_trend("1d")
             except: pass
 
-            current_btc_4h = self.btc_mtfa["4H"]
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-                futures = [executor.submit(self.process_coin, symbol, current_btc_4h, i+1) for i, symbol in enumerate(coins)]
+            current_btc_1d = self.btc_mtfa["1D"]
+            coins = self.get_top_usdt_pairs()
+            new_results = []
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+                futures = [executor.submit(self.process_coin, symbol, current_btc_1d, i+1) for i, symbol in enumerate(coins)]
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     if result is not None:
                         new_results.append(result)
 
-            # --- This is the line that fixes the SyntaxError! ---
             new_results = sorted(new_results, key=lambda x: x['Asset'])
-            
             self.results_data = new_results
             sl_timezone = pytz.timezone('Asia/Colombo')
             self.last_update_time = datetime.now(sl_timezone).strftime("%I:%M:%S %p")
-            time.sleep(30)
+            time.sleep(25)
 
 @st.cache_resource
 def get_scanner(): return BackgroundScanner()
 scanner_engine = get_scanner()
 
 # -----------------------------
-# Professional UI Construction
+# Dashboard UI Render Engine
 # -----------------------------
 st.markdown(f"""
     <div class="top-nav">
         <div class="top-nav-logo">
-            🤖 <span class="text-glow-blue">INSTITUTIONAL ALGO V6.0</span>
+            🏛️ <span class="text-glow-blue">INSTITUTIONAL V6 (200 COIN INTERFACE)</span>
         </div>
         <div style="display: flex;">
-            <div class="top-nav-item active">🖥 Dashboard</div>
+            <div class="top-nav-item active">🖥 Live Dashboard</div>
             <div class="top-nav-item">⚙️ Settings</div>
         </div>
         <div style="color: #8C9BB5; font-size: 13px;">
-            🔴 Live Server: {scanner_engine.last_update_time} (Smart Money Engine)
+            🔴 Engine Heartbeat: {scanner_engine.last_update_time}
         </div>
     </div>
 """, unsafe_allow_html=True)
 
-# 🌟 SCROLLING US NEWS TICKER 🌟
 news_entries = get_live_news()
 if news_entries:
     ticker_text = ""
     for entry in news_entries[:10]:
-        ticker_text += f"<span class='ticker-item'><span class='ticker-highlight'>🔴 BREAKING US/MACRO:</span> {entry.title}</span>"
-    
-    st.markdown(f"""
-        <div class="ticker-wrap">
-            <div class="ticker">
-                {ticker_text}
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+        ticker_text += f"<span class='ticker-item'><span class='ticker-highlight'>🔴 BREAKING US NEWS:</span> {entry.title}</span>"
+    st.markdown(f'<div class="ticker-wrap"><div class="ticker">{ticker_text}</div></div>', unsafe_allow_html=True)
 
-tab_dash, tab_history, tab_news = st.tabs(["📊 Live Market Dashboard", "📜 Signal Log & History", "📰 US & Macro Events"])
+tab_dash, tab_history, tab_news = st.tabs(["📊 Live Scanner", "📜 Historical Registry", "📰 Macro Intel"])
 
 with tab_dash:
-    st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: -10px;'>System Overview</h3>", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 1, 1])
+    st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: -10px;'>System Diagnostics</h3>", unsafe_allow_html=True)
+    col1, col2 = st.columns([1, 1])
 
     def get_class(trend): 
         return "metric-value-up" if "UP" in trend else "metric-value-down" if "DOWN" in trend else "metric-value-neutral"
@@ -479,12 +320,11 @@ with tab_dash:
     with col1:
         st.markdown("""
             <div class="dash-card">
-                <div class="card-title">Engine Overview <span style="font-size: 12px; color: #00E676;">● Active</span></div>
-                <div class="card-subtitle" style="margin-bottom: 15px;">Advanced Quantitative Filters</div>
-                <div class="filter-item">✔️ Pullback / Retest Wick Entry</div>
-                <div class="filter-item">✔️ Bollinger Band Squeeze Release</div>
-                <div class="filter-item">🛡️ Rubber Band Overextension Block (>2%)</div>
-                <div class="filter-item" style="border: none;">🛡️ BTC Master Regime Link</div>
+                <div class="card-title">Active Filters <span style="font-size: 12px; color: #00E676;">● 200 Coin Tracking Matrix</span></div>
+                <div class="card-subtitle" style="margin-bottom: 15px;">Pure Execution Tracking</div>
+                <div class="filter-item">✔️ 15-Minute EMA Bullish Crossover</div>
+                <div class="filter-item">✔️ 1-Hour Macro Structural Verification</div>
+                <div class="filter-item" style="border: none;">🛡️ BTC Daily Regime Lock</div>
             </div>
         """, unsafe_allow_html=True)
 
@@ -492,54 +332,13 @@ with tab_dash:
         btc_price = scanner_engine.btc_mtfa['Price']
         st.markdown(f"""
             <div class="dash-card">
-                <div class="card-title">Bitcoin (BTC) <span style="color: #5D88FF; font-weight: bold;">{btc_price}</span></div>
-                <div class="card-subtitle" style="margin-bottom: 15px;">Multi-Timeframe Analysis (50/200)</div>
+                <div class="card-title">Bitcoin Index <span style="color: #5D88FF; font-weight: bold;">{btc_price}</span></div>
+                <div class="card-subtitle" style="margin-bottom: 15px;">Regime Trend Profiles</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div class="metric-box">
-                        <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">15 Min Trend</div>
-                        <div class="{get_class(scanner_engine.btc_mtfa['15m'])}">{scanner_engine.btc_mtfa['15m']}</div>
-                    </div>
-                    <div class="metric-box">
-                        <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">1 Hour Trend</div>
-                        <div class="{get_class(scanner_engine.btc_mtfa['1H'])}">{scanner_engine.btc_mtfa['1H']}</div>
-                    </div>
-                    <div class="metric-box">
-                        <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">4 Hour Trend</div>
-                        <div class="{get_class(scanner_engine.btc_mtfa['4H'])}">{scanner_engine.btc_mtfa['4H']}</div>
-                    </div>
-                    <div class="metric-box">
-                        <div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">Daily Trend</div>
-                        <div class="{get_class(scanner_engine.btc_mtfa['1D'])}">{scanner_engine.btc_mtfa['1D']}</div>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-            <div class="dash-card">
-                <div class="card-title">Notification Settings <span style="font-size: 12px; color: #5D88FF;">⚙️ Config</span></div>
-                <div class="card-subtitle" style="margin-bottom: 15px;">Target: Telegram Push Alerts</div>
-        """, unsafe_allow_html=True)
-
-        alert_threshold = st.radio(
-            "Set Minimum Telegram Trigger Level:",
-            ("85% (Strict / High Confirmation)", "65% (Aggressive / Medium Confirmation)"),
-            label_visibility="collapsed"
-        )
-
-        if "85" in alert_threshold:
-            scanner_engine.min_alert_confidence = 85
-        else:
-            scanner_engine.min_alert_confidence = 65
-
-        st.markdown(f"""
-                <div style="background: rgba(16, 22, 48, 0.8); padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 3px solid #00E676;">
-                    <div style="color: white; font-size: 14px; display: flex; justify-content: space-between;">
-                        <span>📲 Telegram Integration</span>
-                        <span style="color: #00E676;">+ Connected</span>
-                    </div>
-                    <div style="color: #8C9BB5; font-size: 12px; margin-top: 5px;">Alerting & Saving to History at <b>>= {scanner_engine.min_alert_confidence}%</b></div>
+                    <div class="metric-box"><div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">15M Status</div><div class="{get_class(scanner_engine.btc_mtfa['15M'])}">{scanner_engine.btc_mtfa['15M']}</div></div>
+                    <div class="metric-box"><div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">1H Status</div><div class="{get_class(scanner_engine.btc_mtfa['1H'])}">{scanner_engine.btc_mtfa['1H']}</div></div>
+                    <div class="metric-box"><div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">4H Status</div><div class="{get_class(scanner_engine.btc_mtfa['4H'])}">{scanner_engine.btc_mtfa['4H']}</div></div>
+                    <div class="metric-box"><div style="font-size: 12px; color: #8C9BB5; margin-bottom: 5px;">Daily Status</div><div class="{get_class(scanner_engine.btc_mtfa['1D'])}">{scanner_engine.btc_mtfa['1D']}</div></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -549,119 +348,54 @@ with tab_dash:
     if not scanner_engine.results_data:
         st.markdown("""
             <div class="dash-card" style="text-align: center; padding: 40px;">
-                <h3 style="color: #5D88FF;">⏳ Booting Master Engine & Scanning Top 100 coins...</h3>
-                <p style="color: #8C9BB5;">Please wait while the algorithm gathers the initial data set.</p>
+                <h3 style="color: #5D88FF;">⏳ Constructing Core 200 Asset 15M Matrix...</h3>
+                <p style="color: #8C9BB5;">Synchronizing with the Binance API data pipeline. Standby.</p>
             </div>
         """, unsafe_allow_html=True)
     else:
         df_all = pd.DataFrame(scanner_engine.results_data)
-        
-        df_crosses = df_all[df_all['Signal'].str.contains('CROSS', na=False)]
-        df_others = df_all[~df_all['Signal'].str.contains('CROSS', na=False)]
+        df_display = df_all[["Asset", "Signal", "Status", "Price", "Action"]]
+        df_crosses = df_display[df_display['Signal'].str.contains('CROSS', na=False)]
+        df_others = df_display[~df_display['Signal'].str.contains('CROSS', na=False)]
         
         def color_rows(val):
             if isinstance(val, str):
                 if 'http' in val: return '' 
-                
-                if 'TOP 40' in val and 'CROSS' in val:
-                    return 'background-color: rgba(255, 215, 0, 0.15); color: #FFD700; font-weight: bold; border-left: 3px solid #FFD700;'
-                
-                if 'CROSS' in val: 
-                    return 'background-color: rgba(93, 136, 255, 0.2); color: #FFFFFF; font-weight: bold; border-left: 2px solid #5D88FF;'
-                
+                if 'CROSS' in val: return 'background-color: rgba(93, 136, 255, 0.2); color: #FFFFFF; font-weight: bold; border-left: 3px solid #5D88FF;'
                 if 'BLOCKED' in val: return 'color: #FF4B4B; font-weight: bold;'
-                if '%' in val:
-                    try:
-                        num = int(val.replace('%', ''))
-                        return 'color: #00E676; font-weight: bold;' if num >= 85 else 'color: #F7931A; font-weight: bold;' if num >= 65 else 'color: #FF4B4B; font-weight: bold;'
-                    except: pass
                 if 'UPTREND' in val: return 'color: #00E676;'
                 if 'DOWNTREND' in val: return 'color: #FF4B4B;'
-                if 'SIDEWAY' in val: return 'color: #8C9BB5;'
             return ''
 
-        link_config = {
-            "Action": st.column_config.LinkColumn(
-                "Trade / Chart",
-                display_text="📈 View Chart",
-                width="small"
-            )
-        }
+        link_config = {"Action": st.column_config.LinkColumn("Chart", display_text="📈 Open Link", width="small")}
 
         if not df_crosses.empty:
-            st.markdown("""
-                <div class="dash-card" style="padding-bottom: 0; border: 1px solid #5D88FF; background: rgba(93, 136, 255, 0.05); margin-bottom: 20px;">
-                    <div class="card-title" style="color: #5D88FF; text-shadow: 0 0 10px rgba(93,136,255,0.5);">🚀 15M MICRO-TRIGGERS DETECTED</div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="dash-card" style="padding-bottom: 0; border: 1px solid #5D88FF; background: rgba(93, 136, 255, 0.05); margin-bottom: 20px;"><div class="card-title" style="color: #5D88FF;">🚀 VALIDATED DIRECT SIGNALS TRADING WINDOW</div></div>', unsafe_allow_html=True)
             st.dataframe(df_crosses.style.map(color_rows), use_container_width=True, hide_index=True, column_config=link_config)
         else:
-            st.markdown("""
-                <div class="dash-card" style="padding: 15px; margin-bottom: 20px; border: 1px dashed rgba(41, 56, 102, 0.8);">
-                    <div style="color: #8C9BB5; text-align: center; font-size: 14px;">No active 15M micro-triggers at this moment. Waiting for setup...</div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="dash-card" style="padding: 15px; margin-bottom: 20px; border: 1px dashed rgba(41, 56, 102, 0.8);"><div style="color: #8C9BB5; text-align: center; font-size: 14px;">No structural 15M crossovers observed across the 200 asset array.</div></div>', unsafe_allow_html=True)
 
-        st.markdown("""
-            <div class="dash-card" style="padding-bottom: 0;">
-                <div class="card-title">🌐 Live Market Activity <span style="font-size: 12px; font-weight: normal; background: rgba(93,136,255,0.2); padding: 3px 8px; border-radius: 5px; color: #5D88FF;">General Overview</span></div>
-            </div>
-        """, unsafe_allow_html=True)
-        
+        st.markdown('<div class="dash-card" style="padding-bottom: 0;"><div class="card-title">🌐 Asset Registry Stream (Top 200 Volume Markets)</div></div>', unsafe_allow_html=True)
         st.dataframe(df_others.style.map(color_rows), use_container_width=True, height=400, hide_index=True, column_config=link_config)
 
 with tab_history:
-    st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: 10px;'>📜 Historical Trigger Log</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #8C9BB5;'>This ledger automatically records every coin that successfully passes your confidence threshold (65% or 85%).</p>", unsafe_allow_html=True)
-    
+    st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: 10px;'>📜 Signal Registry Log</h3>", unsafe_allow_html=True)
     if os.path.exists(HISTORY_FILE):
         history_df = pd.read_csv(HISTORY_FILE)
-        
         if not history_df.empty:
             history_df = history_df.iloc[::-1].reset_index(drop=True)
-            
-            def color_history(val):
-                if isinstance(val, str):
-                    if 'LONG' in val: return 'color: #00E676; font-weight: bold;'
-                    if 'SHORT' in val: return 'color: #FF4B4B; font-weight: bold;'
-                    if '%' in val: return 'color: #5D88FF; font-weight: bold;'
-                return ''
-                
-            st.dataframe(history_df.style.map(color_history), use_container_width=True, height=600)
-            
-            csv_data = history_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download History CSV",
-                data=csv_data,
-                file_name="algo_history_export.csv",
-                mime="text/csv",
-            )
+            st.dataframe(history_df.style.map(lambda v: 'color: #00E676; font-weight: bold;' if 'LONG' in str(v) else ''), use_container_width=True, height=600)
+            st.download_button(label="📥 Export Registry Dataset (CSV)", data=history_df.to_csv(index=False).encode('utf-8'), file_name="algo_15m_history.csv", mime="text/csv")
         else:
-            st.info("The history ledger is currently empty. Waiting for the first valid signal...")
+            st.info("Signal ledger is clear. Monitoring market array...")
     else:
-        st.info("The history ledger is currently empty. Waiting for the first valid signal...")
+        st.info("Signal ledger is clear. Monitoring market array...")
 
-# 🌟 FIXED: HTML Formatted News Feed 🌟
 with tab_news:
-    st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: 10px;'>📰 US Macro & Geopolitical Updates</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #8C9BB5; margin-bottom: 20px;'>Live feed filtered for major US events (Elections, Wars, Federal Reserve, etc.)</p>", unsafe_allow_html=True)
-    
+    st.markdown("<h3 style='color: white; margin-bottom: 20px; margin-top: 10px;'>📰 Fundamental Wire Feed</h3>", unsafe_allow_html=True)
     if news_entries:
         for entry in news_entries[:10]:
             clean_summary = clean_html(entry.summary)
             img_url = get_image_url(entry)
-            
             img_html = f'<img src="{img_url}" style="width: 100%; border-radius: 8px; margin-bottom: 15px; object-fit: cover; max-height: 250px;" onerror="this.style.display=\'none\'">' if img_url else ""
-            
-            # Formatted exactly to prevent Streamlit from turning this into a code block
-            html_card = (
-                f'<div class="dash-card" style="margin-bottom: 20px; padding: 20px; border-left: 4px solid #FF4B4B;">'
-                f'{img_html}'
-                f'<div style="font-weight: 700; font-size: 18px; color: #FFFFFF; margin-bottom: 10px;">{entry.title}</div>'
-                f'<div style="color: #E0E6ED; font-size: 14px; line-height: 1.5; margin-bottom: 10px;">{clean_summary}</div>'
-                f'<div style="color: #8C9BB5; font-size: 12px; font-weight: bold;">🕒 {entry.published}</div>'
-                f'</div>'
-            )
-            st.markdown(html_card, unsafe_allow_html=True)
-    else:
-        st.error("⚠️ Failed to load the live US news feed. Please try again later.")
+            st.markdown(f'<div class="dash-card" style="margin-bottom: 20px; padding: 20px; border-left: 4px solid #FF4B4B;">{img_html}<div style="font-weight: 700; font-size: 18px; color: #FFFFFF; margin-bottom: 10px;">{entry.title}</div><div style="color: #E0E6ED; font-size: 14px; line-height: 1.5; margin-bottom: 10px;">{clean_summary}</div><div style="color: #8C9BB5; font-size: 12px; font-weight: bold;">🕒 {entry.published}</div></div>', unsafe_allow_html=True)
