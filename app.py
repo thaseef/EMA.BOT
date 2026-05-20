@@ -1,4 +1,3 @@
-%%writefile app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -12,6 +11,7 @@ import concurrent.futures
 import os
 import feedparser
 import re
+import base64
 
 # -----------------------------
 # Page Configuration & Styling
@@ -284,12 +284,25 @@ def get_scanner(): return BackgroundScanner()
 scanner_engine = get_scanner()
 
 # -----------------------------
+# Image Loading Helper
+# -----------------------------
+def get_image_base64(file_path):
+    try:
+        with open(file_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        return f'<img src="data:image/png;base64,{encoded_string}" style="width: 50px; height: 50px; margin-right: 15px; border-radius: 8px; object-fit: contain;">'
+    except FileNotFoundError:
+        return "🏛️"
+
+# -----------------------------
 # Dashboard UI Render Engine
 # -----------------------------
+logo_html = get_image_base64("logo.png")
+
 st.markdown(f"""
     <div class="top-nav">
         <div class="top-nav-logo">
-            🏛️ <span class="text-glow-blue">INSTITUTIONAL V6 (200 COIN INTERFACE)</span>
+            {logo_html} <span class="text-glow-blue">INSTITUTIONAL V6 (200 COIN INTERFACE)</span>
         </div>
         <div style="display: flex;">
             <div class="top-nav-item active">🖥 Live Dashboard</div>
