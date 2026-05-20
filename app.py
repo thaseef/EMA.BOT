@@ -17,7 +17,7 @@ import re
 # -----------------------------
 st.set_page_config(
     page_title="INSTITUTIONAL ALGO V6.0 — CAPITAL TRADE ENGINE",
-    page_icon="🏛️",
+    page_icon="logo.png",  # Updated to your custom logo
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -217,7 +217,7 @@ class BackgroundScanner:
                     }]).to_csv(ALGO_LOG_FILE, mode='a', header=False, index=False)
                     
                     self.send_telegram(
-                        "🏛️ *15M BULLISH CROSSOVER DETECTED* 🏛️",
+                        "⭐ *15M BULLISH CROSSOVER DETECTED* ⭐", # Changed emoji for cleaner Telegram msg
                         f"**Asset:** {symbol}\n**Action:** {sig}\n**Execution Price:** ${round(price, 6)}\n\n📈 **Trend Filters:**\n• 1H Filter: {trend_macro}\n• Volume Status: {vol_status}"
                     )
                     self.alerted_candles[symbol] = closed_candle_time
@@ -269,7 +269,7 @@ class BackgroundScanner:
 
                     # Send Updated Telegram alert containing real-money cash calculations
                     self.send_telegram(
-                        f"🏛️ *TRADE AUTOMATICALLY CLOSED ({outcome})*",
+                        f"⚡ *TRADE AUTOMATICALLY CLOSED ({outcome})*", # Changed emoji for cleaner Telegram msg
                         f"**Asset:** {asset}\n**Invested Capital:** ${round(capital, 2)}\n**Entry Price:** ${entry}\n**Exit Price:** ${curr_price}\n\n📊 **Metrics:**\n• Final PNL %: {round(final_pnl_pct, 2)}%\n• Final Profit/Loss: {'+$' if final_pnl_cash >= 0 else '-$'}{round(abs(final_pnl_cash), 2)}"
                     )
                 else:
@@ -317,7 +317,8 @@ scanner_engine = get_scanner()
 st.markdown(f"""
     <div class="top-nav">
         <div class="top-nav-logo">
-            🏛️ <span class="text-glow-blue">INSTITUTIONAL CORE V6.0 — CAPITAL CONTROLLER</span>
+            <img src="logo.png" style="height: 25px; margin-right: 10px; border-radius: 5px;"> 
+            <span class="text-glow-blue">INSTITUTIONAL CORE V6.0 — CAPITAL CONTROLLER</span>
         </div>
         <div style="color: #8C9BB5; font-size: 13px; margin-left: auto;">
             🔴 Engine Heartbeat: {scanner_engine.last_update_time}
@@ -451,81 +452,4 @@ with tab_running:
                 
                 try:
                     p_resp = requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={asset}", timeout=2).json()
-                    current_price = float(p_resp['price'])
-                except:
-                    current_price = entry
-
-                # Upgraded Math Engine Formulation Models
-                pnl_pct = ((current_price - entry) / entry) * 100
-                pnl_cash = capital * (pnl_pct / 100)
-                
-                reward_pct = ((tp - entry) / entry) * 100
-                reward_cash = capital * (reward_pct / 100)
-                
-                risk_pct = ((entry - sl) / entry) * 100
-                risk_cash = capital * (risk_pct / 100)
-                
-                rrr = (tp - entry) / (entry - sl) if (entry - sl) != 0 else 0
-
-                portfolio_data.append({
-                    "Asset": asset,
-                    "Capital": f"${round(capital, 2)}",
-                    "Entry Price": f"${round(entry, 6)}",
-                    "Current Price": f"${round(current_price, 6)}",
-                    "Live PNL (%)": f"{'+' if pnl_pct >= 0 else ''}{round(pnl_pct, 2)}%",
-                    "Live PNL ($)": f"{'+$' if pnl_cash >= 0 else '-$'}{round(abs(pnl_cash), 2)}",
-                    "Target (TP)": f"${round(tp, 6)}",
-                    "Stop Floor (SL)": f"${round(sl, 6)}",
-                    "Max Profit ($)": f"${round(reward_cash, 2)}",
-                    "Max Risk ($)": f"${round(risk_cash, 2)}",
-                    "RRR": f"1:{round(rrr, 2)}",
-                    "Status": "RUNNING ⚡"
-                })
-
-            port_df = pd.DataFrame(portfolio_data)
-
-            def style_live_returns(val):
-                if isinstance(val, str):
-                    if '-' in val: return 'color: #FF4B4B; font-weight:bold;'
-                    if '+' in val or '$' in val: return 'color: #00E676; font-weight:bold;'
-                return ''
-                
-            st.dataframe(
-                port_df.style.map(style_live_returns, subset=['Live PNL (%)', 'Live PNL ($)']), 
-                use_container_width=True, 
-                hide_index=True
-            )
-        else:
-            st.info("No active capital allocations running.")
-    else:
-        st.info("No active capital allocations running.")
-
-# -------------------------------------------------------------
-# TAB 3: CLOSED JOURNAL REGISTRY (PERMANENT ARCHIVE STORAGE)
-# -------------------------------------------------------------
-with tab_journal:
-    st.markdown("<h3 style='color: white; margin-top: 10px;'>📜 Historical Capital Trade Journal</h3>", unsafe_allow_html=True)
-    if os.path.exists(TRADE_JOURNAL_FILE):
-        journal_df = pd.read_csv(TRADE_JOURNAL_FILE)
-        if not journal_df.empty:
-            st.dataframe(journal_df.iloc[::-1], use_container_width=True, height=500, hide_index=True)
-            st.download_button(
-                label="📥 Export Ledger Dataset (CSV)",
-                data=journal_df.to_csv(index=False).encode('utf-8'),
-                file_name="capital_trade_history.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("Historical ledger is clear.")
-    else:
-        st.info("Historical ledger is clear.")
-
-# -------------------------------------------------------------
-# TAB 4: FUNDAMENTAL MONITOR WIRE
-# -------------------------------------------------------------
-with tab_intel:
-    st.markdown("<h3 style='color: white; margin-top: 10px;'>📰 Fundamental Wire Feed</h3>", unsafe_allow_html=True)
-    if news_entries:
-        for entry in news_entries[:10]:
-            clean_summary = clean_html(entry.summary)
-            st.markdown(f'<div class="dash-card" style="margin-bottom: 20px; padding: 20px; border-left: 4px solid #FF4B4B;"><div style="font-weight: 700; font-size: 16px; color: #FFFFFF; margin-bottom: 10px;">{entry.title}</div><div style="color: #E0E6ED; font-size: 13px; line-height: 1.5; margin-bottom: 10px;">{clean_summary}</div><div style="color: #8C9BB5; font-size: 11px; font-weight: bold;">🕒 {entry.published}</div></div>', unsafe_allow_html=True)
+                    current_price = float
